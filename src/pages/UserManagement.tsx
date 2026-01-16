@@ -1,231 +1,211 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
+  Users,
+  UserPlus,
   Search,
   Filter,
   MoreVertical,
-  UserCheck,
-  UserX,
-  Eye,
-  Building2,
+  Edit2,
+  Trash2,
+  ShieldAlert,
+  ShieldCheck,
   Calendar,
+  FileText,
+  Building2,
+  DoorOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 
-const UserManagement = () => {
-  // স্ট্যাটিক ইউজার ডেটা
-  const users = [
+// টাইপ ডিফিনিশন
+interface User {
+  id: string;
+  name: string;
+  building: string;
+  flat: string;
+  room: string;
+  paymentStatus: "Paid" | "Due" | "Overdue";
+  isRestricted: boolean;
+  joinDate: string;
+  deadline: string;
+}
+
+const UserManagement: React.FC = () => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  // স্যাম্পল ডেটা
+  const [users, setUsers] = useState<User[]>([
     {
-      id: 1,
-      name: "আব্দুর রহিম",
-      room: "৪০২",
-      building: "পদ্মা",
-      status: "Active",
-      phone: "017XXXXXXXX",
+      id: "1",
+      name: "সাকিব হাসান",
+      building: "এ-ব্লক",
+      flat: "৩০২",
+      room: "এ-১",
+      paymentStatus: "Paid",
+      isRestricted: false,
+      joinDate: "২০২৫-১০-০১",
+      deadline: "২০২৬-০১-৩১",
     },
     {
-      id: 2,
-      name: "করিম উদ্দিন",
-      room: "১০৫",
-      building: "মেঘনা",
-      status: "Restricted",
-      phone: "018XXXXXXXX",
+      id: "2",
+      name: "তামিম ইকবাল",
+      building: "বি-ব্লক",
+      flat: "১০৪",
+      room: "বি-৩",
+      paymentStatus: "Overdue",
+      isRestricted: true,
+      joinDate: "২০২৫-১১-১৫",
+      deadline: "২০২৬-০১-১০",
     },
-    {
-      id: 3,
-      name: "সাকিব আল হাসান",
-      room: "৩০১",
-      building: "যমুনা",
-      status: "Active",
-      phone: "019XXXXXXXX",
-    },
-    {
-      id: 4,
-      name: "মাহমুদুল্লাহ",
-      room: "২০২",
-      building: "পদ্মা",
-      status: "Pending",
-      phone: "015XXXXXXXX",
-    },
-  ];
+  ]);
+
+  const toggleRestriction = (id: string) => {
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, isRestricted: !u.isRestricted } : u));
+  };
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
+      {/* Header & Add User */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold font-display text-gradient">
-            ইউজার ম্যানেজমেন্ট
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            হোস্টেলের সকল আবাসিক মেম্বারদের তালিকা এবং স্ট্যাটাস কন্ট্রোল করুন।
-          </p>
+          <h1 className="text-3xl font-bold font-display text-gradient flex items-center gap-3">
+            <Users className="w-8 h-8 text-primary" /> ইউজার ম্যানেজমেন্ট
+          </h1>
+          <p className="text-muted-foreground mt-1">সব আবাসিক মেম্বারদের তথ্য এবং এক্সেস কন্ট্রোল করুন।</p>
         </div>
-        <Button className="bg-gradient-hero shadow-glow font-bold">
-          + নতুন ইউজার যোগ করুন
+        <Button className="bg-primary shadow-glow gap-2 h-12 px-6">
+          <UserPlus className="w-4 h-4" /> নতুন ইউজার যোগ করুন
         </Button>
       </div>
 
-      {/* Filters & Search - Glass Effect */}
-      <div className="glass p-4 rounded-xl flex flex-wrap items-center gap-4 border-border/40">
-        <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="নাম বা ফোন নাম্বার দিয়ে খুঁজুন..."
-            className="pl-10 bg-background/50"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
+      {/* Search & Advanced Filters */}
+      <div className="glass p-4 rounded-2xl border border-border/50 space-y-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="নাম বা রুম দিয়ে খুঁজুন..."
+              className="w-full bg-secondary/50 border border-border rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-primary/50 outline-hidden transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Button 
+            variant="secondary" 
+            onClick={() => setShowFilters(!showFilters)}
+            className={`gap-2 h-12 px-5 ${showFilters ? 'bg-primary/10 text-primary border-primary/20' : ''}`}
           >
-            <Building2 className="w-4 h-4" /> বিল্ডিং
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <Filter className="w-4 h-4" /> স্ট্যাটাস
+            <Filter className="w-4 h-4" /> ফিল্টার {showFilters ? 'বন্ধ করুন' : ''}
           </Button>
         </div>
+
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-border/50 overflow-hidden"
+            >
+              <select className="bg-secondary/50 border border-border rounded-lg p-2 text-sm outline-hidden">
+                <option>সব বিল্ডিং</option>
+                <option>এ-ব্লক</option>
+                <option>বি-ব্লক</option>
+              </select>
+              <select className="bg-secondary/50 border border-border rounded-lg p-2 text-sm outline-hidden">
+                <option>সব ফ্ল্যাট</option>
+                <option>১০১</option>
+                <option>৩০২</option>
+              </select>
+              <select className="bg-secondary/50 border border-border rounded-lg p-2 text-sm outline-hidden">
+                <option>সব পেমেন্ট স্ট্যাটাস</option>
+                <option>Paid</option>
+                <option>Due</option>
+                <option>Overdue</option>
+              </select>
+              <Button variant="outline" className="text-xs h-10">ফিল্টার রিসেট</Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* User Table Section */}
-      <div className="rounded-xl border border-border/50 bg-card overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-secondary/50 border-b border-border">
+      {/* User Table */}
+      <div className="glass rounded-2xl border border-border/50 overflow-hidden">
+        <div className="overflow-x-auto bg-linear-to-b from-card to-background/50">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-muted/50 text-muted-foreground uppercase text-[10px] font-black tracking-widest">
               <tr>
-                <th className="p-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  ইউজার
-                </th>
-                <th className="p-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  বিল্ডিং ও রুম
-                </th>
-                <th className="p-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  ফোন
-                </th>
-                <th className="p-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  স্ট্যাটাস
-                </th>
-                <th className="p-4 text-xs font-bold uppercase tracking-wider text-muted-foreground text-right">
-                  অ্যাকশন
-                </th>
+                <th className="px-6 py-4">ইউজার ও লোকেশন</th>
+                <th className="px-6 py-4">পেমেন্ট স্ট্যাটাস</th>
+                <th className="px-6 py-4">ডেডলাইন</th>
+                <th className="px-6 py-4">এক্সেস</th>
+                <th className="px-6 py-4 text-right">অ্যাকশন</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/50 bg-linear-to-b from-card to-background/30">
+            <tbody className="divide-y divide-border/40">
               {users.map((user) => (
-                <tr
-                  key={user.id}
-                  className="hover:bg-primary/5 transition-colors group"
-                >
-                  <td className="p-4">
+                <tr key={user.id} className="hover:bg-primary/5 transition-colors group">
+                  <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs border border-primary/20">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
                         {user.name.charAt(0)}
                       </div>
-                      <span className="font-medium text-sm group-hover:text-primary transition-colors">
-                        {user.name}
-                      </span>
+                      <div>
+                        <p className="font-bold group-hover:text-primary transition-colors">{user.name}</p>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium mt-0.5">
+                          <span className="flex items-center gap-1"><Building2 className="w-2.5 h-2.5"/> {user.building}</span>
+                          <span className="flex items-center gap-1"><DoorOpen className="w-2.5 h-2.5"/> {user.flat}-{user.room}</span>
+                        </div>
+                      </div>
                     </div>
                   </td>
-                  <td className="p-4 text-sm">
-                    <div className="flex flex-col">
-                      <span className="text-foreground font-medium">
-                        {user.building}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground uppercase tracking-tighter">
-                        রুম নং: {user.room}
-                      </span>
+                  <td className="px-6 py-4">
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                      user.paymentStatus === 'Paid' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
+                      user.paymentStatus === 'Overdue' ? 'bg-destructive/10 text-destructive border-destructive/20' : 
+                      'bg-accent/10 text-accent border-accent/20'
+                    }`}>
+                      {user.paymentStatus}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium">{user.deadline}</span>
                     </div>
                   </td>
-                  <td className="p-4 text-sm text-muted-foreground">
-                    {user.phone}
-                  </td>
-                  <td className="p-4">
-                    <Badge
-                      className={
-                        user.status === "Active"
-                          ? "bg-green-500/10 text-green-500 border-green-500/20"
-                          : user.status === "Restricted"
-                          ? "bg-destructive/10 text-destructive border-destructive/20"
-                          : "bg-accent/10 text-accent border-accent/20"
-                      }
+                  <td className="px-6 py-4">
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => toggleRestriction(user.id)}
+                      className={`h-8 gap-2 text-[10px] font-bold rounded-lg ${
+                        user.isRestricted ? 'text-destructive bg-destructive/5' : 'text-green-500 bg-green-500/5'
+                      }`}
                     >
-                      {user.status === "Active"
-                        ? "সক্রিয়"
-                        : user.status === "Restricted"
-                        ? "সীমাবদ্ধ"
-                        : "পেন্ডিং"}
-                    </Badge>
+                      {user.isRestricted ? <ShieldAlert className="w-3.5 h-3.5" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                      {user.isRestricted ? "Blocked" : "Active"}
+                    </Button>
                   </td>
-                  <td className="p-4 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className="w-48 font-sans"
-                      >
-                        <DropdownMenuLabel>ইউজার অপশন</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="cursor-pointer gap-2">
-                          <Eye className="w-4 h-4" /> প্রোফাইল দেখুন
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer gap-2">
-                          <Calendar className="w-4 h-4 text-accent" /> ডেডলাইন
-                          বাড়ান
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {user.status === "Active" ? (
-                          <DropdownMenuItem className="cursor-pointer gap-2 text-destructive focus:text-destructive">
-                            <UserX className="w-4 h-4" /> রেস্ট্রিক্ট করুন
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem className="cursor-pointer gap-2 text-primary focus:text-primary">
-                            <UserCheck className="w-4 h-4" /> অ্যাক্টিভ করুন
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                        <FileText className="w-4 h-4" /> {/* Documents */}
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination - Static */}
-        <div className="p-4 border-t border-border bg-secondary/20 flex items-center justify-between text-xs text-muted-foreground">
-          <span>মোট {users.length} জন ইউজারের মধ্যে ১-৪ দেখানো হচ্ছে</span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled
-              className="h-7 text-[10px]"
-            >
-              পূর্ববর্তী
-            </Button>
-            <Button variant="outline" size="sm" className="h-7 text-[10px]">
-              পরবর্তী
-            </Button>
-          </div>
         </div>
       </div>
     </div>
