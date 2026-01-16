@@ -1,184 +1,152 @@
-import { Button } from "@/components/ui/button";
+import React from "react";
 import { motion } from "framer-motion";
-import { 
-  Users, 
-  Utensils, 
-  Wallet, 
-  AlertTriangle, 
-  TrendingUp, 
-  ArrowUpRight,
-  ArrowDownRight,
+import {
+  Users,
+  UserCheck,
+  Utensils,
+  Wallet,
+  AlertCircle,
+  TrendingUp,
+  ArrowRight,
   LucideIcon,
-  Bell
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-// ১. স্ট্যাট কার্ডের জন্য টাইপ ডিফিনিশন
 interface StatCardProps {
   title: string;
-  value: string;
+  value: string | number;
+  subValue?: string;
   icon: LucideIcon;
-  trend: "up" | "down";
-  trendValue: string;
   color: string;
+  trend?: string;
 }
 
-// ২. টেবিল ডেটার জন্য ইন্টারফেস
-interface PaymentActivity {
+interface OverdueUser {
   name: string;
-  month: string;
+  room: string;
   amount: string;
-  status: "Paid" | "Pending";
+  days: number; // টাইপ নম্বর, তাই ইংরেজি ডিজিট দিতে হবে
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, trend, trendValue, color }) => (
+const StatCard: React.FC<StatCardProps> = ({ title, value, subValue, icon: Icon, color, trend }) => (
   <motion.div 
     whileHover={{ y: -5 }}
-    className="glass p-6 rounded-2xl border border-border/50 bg-card/50"
+    className="glass p-6 rounded-2xl border border-border/50 bg-card/50 relative overflow-hidden group"
   >
-    <div className="flex justify-between items-start">
-      <div className={`p-3 rounded-xl ${color} bg-opacity-10`}>
+    <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 transition-transform group-hover:scale-110 ${color}`} />
+    <div className="flex justify-between items-start relative z-10">
+      <div className={`p-3 rounded-xl ${color} bg-opacity-10 text-primary`}>
         <Icon className={`w-6 h-6 ${color.replace('bg-', 'text-')}`} />
       </div>
-      <div className={`flex items-center gap-1 text-xs font-bold ${trend === 'up' ? 'text-green-500' : 'text-destructive'}`}>
-        {trend === 'up' ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-        {trendValue}
-      </div>
+      {trend && <span className="text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-1 rounded-lg">{trend}</span>}
     </div>
-    <div className="mt-4">
-      <h3 className="text-muted-foreground text-sm font-medium">{title}</h3>
-      <p className="text-2xl font-bold mt-1 tracking-tight">{value}</p>
+    <div className="mt-4 relative z-10">
+      <h3 className="text-muted-foreground text-xs font-bold uppercase tracking-wider">{title}</h3>
+      <div className="flex items-baseline gap-2">
+        <p className="text-2xl font-black mt-1">{value}</p>
+        {subValue && <span className="text-xs text-muted-foreground font-medium">{subValue}</span>}
+      </div>
     </div>
   </motion.div>
 );
 
 const AdminDashboard: React.FC = () => {
-  // স্যাম্পল ডেটা উইথ টাইপ
-  const recentPayments: PaymentActivity[] = [
-    { name: "সাকিব হাসান", month: "জানুয়ারি ২০২৬", amount: "৳ ৪,৫০০", status: "Paid" },
-    { name: "তানভীর আহমেদ", month: "জানুয়ারি ২০২৬", amount: "৳ ৪,৫০০", status: "Pending" },
-    { name: "মাহমুদ উল্লাহ", month: "ডিসেম্বর ২০২৫", amount: "৳ ৩,২০০", status: "Paid" },
+  // এখানে সংখ্যাগুলো ইংরেজি ডিজিটে (0-9) দেওয়া হয়েছে
+  const overdueUsers: OverdueUser[] = [
+    { name: "আরিফ আহমেদ", room: "৪০২", amount: "৳ ৪,৫০০", days: 12 },
+    { name: "জাহিদ হাসান", room: "২০৫", amount: "৳ ৩,২০০", days: 8 },
+    { name: "রাকিবুল ইসলাম", room: "১০১", amount: "৳ ৫,১০০", days: 15 },
   ];
 
   return (
     <div className="space-y-8">
-      {/* Welcome Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold font-display text-gradient">শুভ সকাল, এডমিন সাহেব!</h1>
-        <p className="text-muted-foreground">আজকের নিরিবিলি হোমের সংক্ষিপ্ত রিপোর্ট এখানে দেখুন।</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold font-display text-gradient">অ্যাডমিন ওভারভিউ</h1>
+          <p className="text-muted-foreground mt-1">আজ ১৬ জানুয়ারি, ২০২৬ - হোস্টেলের বর্তমান অবস্থা</p>
+        </div>
+        <div className="flex items-center gap-2 text-sm font-bold bg-secondary/50 p-2 rounded-xl border border-border">
+          <span className="px-3 py-1 bg-primary text-primary-foreground rounded-lg shadow-glow">LIVE</span>
+          <span className="px-2">সিস্টেম স্ট্যাটাস: সচল</span>
+        </div>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="মোট আবাসিক" 
-          value="৮৬ জন" 
-          icon={Users} 
-          trend="up" 
-          trendValue="+৪ নতুন" 
-          color="bg-primary" 
-        />
-        <StatCard 
-          title="আজকের মিল" 
-          value="১৫২টি" 
-          icon={Utensils} 
-          trend="up" 
-          trendValue="+১২% বৃদ্ধি" 
-          color="bg-accent" 
-        />
-        <StatCard 
-          title="মাসিক কালেকশন" 
-          value="৳ ৪২,৫০০" 
-          icon={Wallet} 
-          trend="down" 
-          trendValue="-২% কম" 
-          color="bg-green-500" 
-        />
-        <StatCard 
-          title="বকেয়া বিল" 
-          value="৳ ৮,২০০" 
-          icon={AlertTriangle} 
-          trend="up" 
-          trendValue="৩ জন বাকি" 
-          color="bg-destructive" 
-        />
+        <StatCard title="মোট আবাসিক" value="১২৪ জন" subValue="১০টি রুম খালি" icon={Users} color="bg-primary" />
+        <StatCard title="অ্যাক্টিভ / রেস্ট্রিক্টেড" value="১১৮ / ০৬" icon={UserCheck} color="bg-blue-500" />
+        <StatCard title="মাসিক আয়" value="৳ ২,৮৫,০০০" trend="+১৫%" icon={Wallet} color="bg-green-500" />
+        <StatCard title="মোট বকেয়া" value="৳ ২৪,৫০০" icon={AlertCircle} color="bg-destructive" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Activity Table */}
-        <div className="lg:col-span-2 glass rounded-2xl border border-border/50 overflow-hidden">
-          <div className="p-6 border-b border-border/50 flex justify-between items-center bg-secondary/20">
-            <h3 className="font-bold flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" /> সর্বশেষ পেমেন্ট আপডেট
+        <div className="lg:col-span-1 space-y-6">
+          <div className="glass p-6 rounded-3xl border border-border/50 bg-linear-to-b from-card to-background h-full">
+            <h3 className="font-bold flex items-center gap-2 mb-6 text-lg">
+              <Utensils className="w-5 h-5 text-accent" /> আজকের মিল অর্ডার
             </h3>
-            <button className="text-xs text-primary font-bold hover:underline">সব দেখুন</button>
+            <div className="space-y-5">
+              {[
+                { label: "সকাল (Breakfast)", count: 98, color: "bg-orange-500" },
+                { label: "দুপুর (Lunch)", count: 112, color: "bg-primary" },
+                { label: "রাত (Dinner)", count: 105, color: "bg-indigo-500" },
+              ].map((meal, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex justify-between text-sm font-bold">
+                    <span>{meal.label}</span>
+                    <span className="text-primary">{meal.count} জন</span>
+                  </div>
+                  <div className="h-3 w-full bg-secondary rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(meal.count / 124) * 100}%` }}
+                      transition={{ duration: 1, delay: i * 0.2 }}
+                      className={`h-full ${meal.color} shadow-glow`}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-2 glass rounded-3xl border border-border/50 overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-border/50 flex justify-between items-center bg-secondary/10">
+            <h3 className="font-bold flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-destructive" /> বকেয়া ইউজার লিস্ট
+            </h3>
+            <Button variant="ghost" size="sm" className="text-xs font-bold gap-1 hover:text-primary">
+              সব দেখুন <ArrowRight className="w-3 h-3" />
+            </Button>
           </div>
           <div className="overflow-x-auto bg-linear-to-b from-card to-background/50">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-muted/30">
+              <thead className="text-[10px] text-muted-foreground uppercase font-black bg-muted/30">
                 <tr>
-                  <th className="px-6 py-4 font-bold">ইউজার</th>
-                  <th className="px-6 py-4 font-bold">বিল মাস</th>
-                  <th className="px-6 py-4 font-bold">পরিমাণ</th>
-                  <th className="px-6 py-4 font-bold text-center">স্ট্যাটাস</th>
+                  <th className="px-6 py-4">আবাসিক</th>
+                  <th className="px-6 py-4">রুম</th>
+                  <th className="px-6 py-4">বকেয়া</th>
+                  <th className="px-6 py-4">সময়</th>
+                  <th className="px-6 py-4 text-right">অ্যাকশন</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {recentPayments.map((item, i) => (
-                  <tr key={i} className="hover:bg-primary/5 transition-colors group">
-                    <td className="px-6 py-4 font-medium group-hover:text-primary transition-colors">
-                      {item.name}
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">{item.month}</td>
-                    <td className="px-6 py-4 font-bold">{item.amount}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${
-                        item.status === 'Paid' 
-                          ? 'bg-green-500/10 text-green-500 border-green-500/20' 
-                          : 'bg-accent/10 text-accent border-accent/20'
-                      }`}>
-                        {item.status === 'Paid' ? 'পরিশোধিত' : 'পেন্ডিং'}
+                {overdueUsers.map((user, i) => (
+                  <tr key={i} className="hover:bg-destructive/5">
+                    <td className="px-6 py-4 font-bold">{user.name}</td>
+                    <td className="px-6 py-4 font-medium">{user.room}</td>
+                    <td className="px-6 py-4 font-black text-destructive">{user.amount}</td>
+                    <td className="px-6 py-4">
+                      <span className="px-2 py-1 bg-destructive/10 text-destructive text-[10px] font-bold rounded-lg">
+                        {user.days} দিন বাকি
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold text-destructive">রিমাইন্ডার</Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-
-        {/* Quick Actions & Menu */}
-        <div className="space-y-6">
-          <div className="glass p-6 rounded-2xl border border-border/50 bg-linear-to-b from-primary/5 to-transparent">
-            <h3 className="font-bold mb-4 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" /> কুইক অ্যাকশন
-            </h3>
-            <div className="grid grid-cols-1 gap-3">
-              <Button className="w-full justify-start gap-3 shadow-glow" variant="default">
-                <Utensils className="w-4 h-4" /> মিল অফ/অন করুন
-              </Button>
-              <Button className="w-full justify-start gap-3" variant="outline">
-                <Wallet className="w-4 h-4" /> পেমেন্ট রিসিভ
-              </Button>
-              <Button className="w-full justify-start gap-3" variant="outline">
-                <Bell  className="w-4 h-4" /> নোটিশ পাঠান
-              </Button>
-            </div>
-          </div>
-
-          <div className="glass p-6 rounded-2xl border border-border/50 bg-linear-to-b from-accent/5 to-transparent">
-            <h3 className="font-bold mb-3 text-accent flex items-center gap-2">
-               আজকের মেনু
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-2 rounded-lg bg-background/50 border border-border/40">
-                <div className="text-[10px] font-bold bg-accent/20 text-accent px-2 py-1 rounded">দুপুর</div>
-                <span className="text-sm font-medium">মুরগির মাংস, ডাল, সবজি</span>
-              </div>
-              <div className="flex items-center gap-3 p-2 rounded-lg bg-background/50 border border-border/40">
-                <div className="text-[10px] font-bold bg-primary/20 text-primary px-2 py-1 rounded">রাত</div>
-                <span className="text-sm font-medium">রুই মাছ, ভর্তা, ডাল</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
