@@ -5,7 +5,6 @@ import axios, {
   AxiosResponse,
 } from "axios";
 
-
 interface RefreshTokenResponse {
   data: {
     accessToken: string;
@@ -56,14 +55,13 @@ const createAxiosSecure = (): AxiosInstance => {
 
           const res = await axios.post<RefreshTokenResponse>(
             "http://localhost:8080/api/v1/auth/refresh-token",
-            { refreshToken }
+            { refreshToken },
           );
 
           localStorage.setItem("accessToken", res.data.data.accessToken);
           localStorage.setItem("refreshToken", res.data.data.refreshToken);
 
-          originalRequest.headers!.Authorization =
-            `${res.data.data.accessToken}`;
+          originalRequest.headers!.Authorization = `${res.data.data.accessToken}`;
 
           return axiosSecure(originalRequest);
         } catch (err) {
@@ -74,12 +72,11 @@ const createAxiosSecure = (): AxiosInstance => {
       }
 
       return Promise.reject(error);
-    }
+    },
   );
 
   return axiosSecure;
 };
-
 
 export const axiosSecure = (() => {
   if (!axiosSecureInstance) {
@@ -88,10 +85,8 @@ export const axiosSecure = (() => {
   return axiosSecureInstance;
 })();
 
-
 const useAxiosSecure = (): AxiosInstance => {
   return axiosSecure;
 };
 
-export default useAxiosSecure;                
- 
+export default useAxiosSecure;

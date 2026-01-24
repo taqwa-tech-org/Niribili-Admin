@@ -1,213 +1,232 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Users,
-  UserPlus,
-  Search,
-  Filter,
-  MoreVertical,
-  Edit2,
-  Trash2,
-  ShieldAlert,
-  ShieldCheck,
-  Calendar,
-  FileText,
-  Building2,
-  DoorOpen,
-} from "lucide-react";
+import { Edit2, Building2, DoorOpen, X, Plus, Save, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import useAxiosSecure from "@/hooks/useAxiosSecure";
+import { toast } from "sonner";
 
-// টাইপ ডিফিনিশন
-interface User {
-  id: string;
+// --- Types ---
+interface Building {
+  _id: string;
   name: string;
-  building: string;
-  flat: string;
-  room: string;
-  paymentStatus: "Paid" | "Due" | "Overdue";
-  isRestricted: boolean;
-  joinDate: string;
-  deadline: string;
 }
 
-const UserManagement: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+interface Flat {
+  _id: string;
+  name: string;
+  buildingId: string;
+}
 
-  // স্যাম্পল ডেটা
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: "1",
-      name: "সাকিব হাসান",
-      building: "এ-ব্লক",
-      flat: "৩০২",
-      room: "এ-১",
-      paymentStatus: "Paid",
-      isRestricted: false,
-      joinDate: "২০২৫-১০-০১",
-      deadline: "২০২৬-০১-৩১",
-    },
-    {
-      id: "2",
-      name: "তামিম ইকবাল",
-      building: "বি-ব্লক",
-      flat: "১০৪",
-      room: "বি-৩",
-      paymentStatus: "Overdue",
-      isRestricted: true,
-      joinDate: "২০২৫-১১-১৫",
-      deadline: "২০২৬-০১-১০",
-    },
-  ]);
+interface UserProfile {
+  _id: string;
+  guardianName: string;
+  whatsappNumber: string;
+  profilePhoto: string;
+  accountStatus: 'process' | 'approved' | 'rejected';
+  buildingId: string;
+  flatId: string;
+  room: string;
+}
 
-  const toggleRestriction = (id: string) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, isRestricted: !u.isRestricted } : u));
+const UserManagement = () => {
+  const axiosSecure = useAxiosSecure();
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [flats, setFlats] = useState<Flat[]>([]);
+  const [modals, setModals] = useState({ building: false, flat: false, user: false });
+  const [selected, setSelected] = useState<any>(null);
+  const [filterBuilding, setFilterBuilding] = useState<string>("all");
+
+  const fetchData = async () => {
+    try {
+      const [u, b, f] = await Promise.all([
+        axiosSecure.get("/profile"),
+        axiosSecure.get("/buildings"),
+        axiosSecure.get("/flats"),
+      ]);
+      setUsers(u.data?.data || u.data || []);
+      setBuildings(b.data?.data || b.data || []);
+      setFlats(f.data?.data || f.data || []);
+    } catch { toast.error("Failed to load data"); }
   };
 
+  useEffect(() => { fetchData(); }, []);
+
+  const toggleModal = (type: keyof typeof modals, data: any = null) => {
+    setSelected(data);
+    setModals((prev) => ({ ...prev, [type]: !prev[type] }));
+  };
+
+  const handleCreateFlat = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = Object.fromEntries(new FormData(e.currentTarget));
+    const payload = {
+      ...formData,
+      monthlyRent: Number(formData.monthlyRent),
+      occupantsCount: Number(formData.occupantsCount),
+      electricity: Number(formData.electricity),
+      water: Number(formData.water),
+      paymentDeadline: new Date(formData.paymentDeadline as string).toISOString(),
+    };
+    try {
+      await axiosSecure.post("/flats", payload);
+      toast.success("Flat created!");
+      fetchData(); toggleModal("flat");
+    } catch { toast.error("Error creating flat"); }
+  };
+
+  const filteredUsers = filterBuilding === "all" 
+    ? users 
+    : users.filter(u => u.buildingId === filterBuilding);
+
   return (
-    <div className="space-y-6">
-      {/* Header & Add User */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold font-display text-gradient flex items-center gap-3">
-            <Users className="w-8 h-8 text-primary" /> ইউজার ম্যানেজমেন্ট
-          </h1>
-          <p className="text-muted-foreground mt-1">সব আবাসিক মেম্বারদের তথ্য এবং এক্সেস কন্ট্রোল করুন।</p>
-        </div>
-        <Button className="bg-primary shadow-glow gap-2 h-12 px-6">
-          <UserPlus className="w-4 h-4" /> নতুন ইউজার যোগ করুন
+    <div className="p-6 md:p-10 space-y-8 min-h-screen bg-background">
+      
+      {/* --- Action Buttons --- */}
+      <div className="flex justify-end gap-3 bg-linear-to-b from-card to-transparent p-6 rounded-3xl border border-border/40">
+        <Button onClick={() => toggleModal("building")} variant="outline" className="rounded-2xl h-12 border-primary/20 font-bold">
+          <Plus className="w-4 h-4 mr-2" /> New Building
+        </Button>
+        <Button onClick={() => toggleModal("flat")} className="rounded-2xl h-12 bg-primary font-bold">
+          <DoorOpen className="w-4 h-4 mr-2" /> New Flat
         </Button>
       </div>
 
-      {/* Search & Advanced Filters */}
-      <div className="glass p-4 rounded-2xl border border-border/50 space-y-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="নাম বা রুম দিয়ে খুঁজুন..."
-              className="w-full bg-secondary/50 border border-border rounded-xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-primary/50 outline-hidden transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* --- Sidebar: Building Filter & List --- */}
+        <aside className="lg:col-span-3 space-y-4">
+          <div className="flex items-center gap-2 px-2 font-black text-xs uppercase tracking-widest text-muted-foreground">
+            <Building2 className="w-4 h-4 text-primary"/> Filter by Buildings
           </div>
-          <Button 
-            variant="secondary" 
-            onClick={() => setShowFilters(!showFilters)}
-            className={`gap-2 h-12 px-5 ${showFilters ? 'bg-primary/10 text-primary border-primary/20' : ''}`}
-          >
-            <Filter className="w-4 h-4" /> ফিল্টার {showFilters ? 'বন্ধ করুন' : ''}
-          </Button>
-        </div>
-
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-border/50 overflow-hidden"
+          <div className="space-y-2">
+            <button 
+              onClick={() => setFilterBuilding("all")}
+              className={`w-full p-4 rounded-2xl text-left transition-all border font-bold text-xs uppercase ${filterBuilding === "all" ? 'bg-primary text-white border-primary shadow-lg' : 'bg-card/50 border-border/50 hover:border-primary/50'}`}
             >
-              <select className="bg-secondary/50 border border-border rounded-lg p-2 text-sm outline-hidden">
-                <option>সব বিল্ডিং</option>
-                <option>এ-ব্লক</option>
-                <option>বি-ব্লক</option>
-              </select>
-              <select className="bg-secondary/50 border border-border rounded-lg p-2 text-sm outline-hidden">
-                <option>সব ফ্ল্যাট</option>
-                <option>১০১</option>
-                <option>৩০২</option>
-              </select>
-              <select className="bg-secondary/50 border border-border rounded-lg p-2 text-sm outline-hidden">
-                <option>সব পেমেন্ট স্ট্যাটাস</option>
-                <option>Paid</option>
-                <option>Due</option>
-                <option>Overdue</option>
-              </select>
-              <Button variant="outline" className="text-xs h-10">ফিল্টার রিসেট</Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+              All Residents
+            </button>
+            {buildings.map(b => (
+              <div 
+                key={b._id}
+                onClick={() => setFilterBuilding(b._id)}
+                className={`group p-4 rounded-2xl border transition-all cursor-pointer flex justify-between items-center ${filterBuilding === b._id ? 'bg-primary/10 border-primary/40 text-primary shadow-sm' : 'bg-card/50 border-border/50 hover:bg-card'}`}
+              >
+                <span className="text-xs font-bold uppercase">{b.name}</span>
+                <Edit2 className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-all" 
+                      onClick={(e) => { e.stopPropagation(); toggleModal("building", b); }} />
+              </div>
+            ))}
+          </div>
+        </aside>
 
-      {/* User Table */}
-      <div className="glass rounded-2xl border border-border/50 overflow-hidden">
-        <div className="overflow-x-auto bg-linear-to-b from-card to-background/50">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-muted/50 text-muted-foreground uppercase text-[10px] font-black tracking-widest">
+        {/* --- Resident Table --- */}
+        <main className="lg:col-span-9 glass rounded-[2.5rem] border border-border/50 overflow-hidden shadow-2xl">
+          <table className="w-full text-left">
+            <thead className="bg-muted/50 border-b border-border/20 text-[10px] uppercase font-black tracking-widest text-muted-foreground">
               <tr>
-                <th className="px-6 py-4">ইউজার ও লোকেশন</th>
-                <th className="px-6 py-4">পেমেন্ট স্ট্যাটাস</th>
-                <th className="px-6 py-4">ডেডলাইন</th>
-                <th className="px-6 py-4">এক্সেস</th>
-                <th className="px-6 py-4 text-right">অ্যাকশন</th>
+                <th className="p-6">Resident Info</th>
+                <th className="p-6">Status</th>
+                <th className="p-6 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/40">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-primary/5 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
-                        {user.name.charAt(0)}
-                      </div>
+            <tbody className="divide-y divide-border/10">
+              {filteredUsers.map(u => (
+                <tr key={u._id} className="hover:bg-primary/5 transition-colors">
+                  <td className="p-6">
+                    <div className="flex items-center gap-4">
+                      <img src={u.profilePhoto} className="w-12 h-12 rounded-xl object-cover border border-border" onError={(e)=>(e.currentTarget.src="https://ui-avatars.com/api/?name=User")}/>
                       <div>
-                        <p className="font-bold group-hover:text-primary transition-colors">{user.name}</p>
-                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium mt-0.5">
-                          <span className="flex items-center gap-1"><Building2 className="w-2.5 h-2.5"/> {user.building}</span>
-                          <span className="flex items-center gap-1"><DoorOpen className="w-2.5 h-2.5"/> {user.flat}-{user.room}</span>
+                        <p className="font-bold text-base leading-none mb-1">{u.guardianName}</p>
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase">
+                          <span className="text-primary">{buildings.find(b=>b._id === u.buildingId)?.name}</span>
+                          <span>•</span>
+                          <span>{flats.find(f=>f._id === u.flatId)?.name || "N/A"} (Room {u.room})</span>
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                      user.paymentStatus === 'Paid' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
-                      user.paymentStatus === 'Overdue' ? 'bg-destructive/10 text-destructive border-destructive/20' : 
-                      'bg-accent/10 text-accent border-accent/20'
-                    }`}>
-                      {user.paymentStatus}
+                  <td className="p-6">
+                    <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase border ${u.accountStatus === 'process' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}`}>
+                      {u.accountStatus}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-xs font-medium">{user.deadline}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={() => toggleRestriction(user.id)}
-                      className={`h-8 gap-2 text-[10px] font-bold rounded-lg ${
-                        user.isRestricted ? 'text-destructive bg-destructive/5' : 'text-green-500 bg-green-500/5'
-                      }`}
-                    >
-                      {user.isRestricted ? <ShieldAlert className="w-3.5 h-3.5" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-                      {user.isRestricted ? "Blocked" : "Active"}
-                    </Button>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
-                        <FileText className="w-4 h-4" /> {/* Documents */}
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                  <td className="p-6 text-right">
+                    <Button onClick={() => toggleModal("user", u)} variant="ghost" size="icon" className="rounded-full hover:bg-primary/20"><Edit2 className="w-4" /></Button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </main>
       </div>
+
+      {/* --- MODALS --- */}
+
+      {/* 1. Building Modal (Create/Update) */}
+      <AnimatePresence>
+        {modals.building && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/60 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-card w-full max-w-sm p-8 rounded-[2.5rem] border border-border shadow-2xl relative">
+              <h3 className="text-xl font-black mb-6">{selected ? "Edit Building" : "New Building"}</h3>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                const name = new FormData(e.currentTarget).get("name");
+                selected ? await axiosSecure.patch(`/buildings/${selected._id}`, { name }) : await axiosSecure.post("/buildings", { name });
+                fetchData(); toggleModal("building");
+                toast.success("Success");
+              }} className="space-y-4">
+                <input name="name" defaultValue={selected?.name} required placeholder="Building Name" className="w-full p-4 rounded-2xl bg-secondary/50 border border-border outline-none focus:ring-2 focus:ring-primary" />
+                <Button type="submit" className="w-full h-14 bg-primary font-bold rounded-2xl shadow-glow">Save Building</Button>
+                <Button type="button" onClick={() => toggleModal("building")} variant="ghost" className="w-full">Cancel</Button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 2. Flat Modal (Create) */}
+      <AnimatePresence>
+        {modals.flat && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/60 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-card w-full max-w-xl p-8 rounded-[2.5rem] border border-border shadow-2xl max-h-[90vh] overflow-y-auto">
+              <h3 className="text-2xl font-black mb-6 uppercase tracking-tighter">Register New Flat</h3>
+              <form onSubmit={handleCreateFlat} className="grid grid-cols-2 gap-4 text-[10px] font-black uppercase">
+                <div className="col-span-2 space-y-1">
+                  <label className="ml-1">Select Building</label>
+                  <select name="buildingId" required defaultValue={filterBuilding !== 'all' ? filterBuilding : ""} className="w-full p-4 rounded-2xl bg-secondary/50 border border-border outline-none">
+                    <option value="">Choose Property</option>
+                    {buildings.map(b => <option key={b._id} value={b._id}>{b.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="ml-1">Flat Name</label>
+                  <input name="name" placeholder="e.g. A-101" className="w-full p-4 rounded-2xl bg-secondary/50 border border-border outline-none" required />
+                </div>
+                <div className="space-y-1">
+                  <label className="ml-1">Monthly Rent</label>
+                  <input name="monthlyRent" type="number" className="w-full p-4 rounded-2xl bg-secondary/50 border border-border outline-none" required />
+                </div>
+                <div className="space-y-1">
+                  <label className="ml-1">Occupants</label>
+                  <input name="occupantsCount" type="number" className="w-full p-4 rounded-2xl bg-secondary/50 border border-border outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="ml-1">Electricity (Base)</label>
+                  <input name="electricity" type="number" className="w-full p-4 rounded-2xl bg-secondary/50 border border-border outline-none" />
+                </div>
+                <div className="col-span-2 space-y-1">
+                   <label className="ml-1">Payment Deadline</label>
+                   <input name="paymentDeadline" type="date" className="w-full p-4 rounded-2xl bg-secondary/50 border border-border outline-none" required />
+                </div>
+                <Button type="submit" className="col-span-2 h-16 bg-primary text-base font-black rounded-2xl shadow-glow">Create Flat Record</Button>
+                <Button type="button" onClick={() => toggleModal("flat")} variant="ghost" className="col-span-2">Close</Button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };
