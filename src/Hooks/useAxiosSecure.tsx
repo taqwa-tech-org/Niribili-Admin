@@ -63,7 +63,7 @@ const createAxiosSecure = (): AxiosInstance => {
           localStorage.setItem("refreshToken", res.data.data.refreshToken);
 
           originalRequest.headers!.Authorization =
-            `Bearer ${res.data.data.accessToken}`;
+            `${res.data.data.accessToken}`;
 
           return axiosSecure(originalRequest);
         } catch (err) {
@@ -93,4 +93,5 @@ const useAxiosSecure = (): AxiosInstance => {
   return axiosSecure;
 };
 
-export default useAxiosSecure;
+export default useAxiosSecure;                
+ 
