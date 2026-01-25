@@ -172,7 +172,7 @@ const UserManagement = () => {
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 const name = new FormData(e.currentTarget).get("name");
-                selected ? await axiosSecure.patch(`/buildings/${selected._id}`, { name }) : await axiosSecure.post("/buildings", { name });
+                await (selected ? axiosSecure.patch(`/buildings/${selected._id}`, { name }) : axiosSecure.post("/buildings", { name }));
                 fetchData(); toggleModal("building");
                 toast.success("Success");
               }} className="space-y-4">
