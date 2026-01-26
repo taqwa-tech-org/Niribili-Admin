@@ -34,6 +34,8 @@ const menuConfig: Record<Role, MenuItem[]> = {
     { icon: Users, label: "ইউজার ম্যানেজমেন্ট", href: "/admin-dashboard/users-management" },
     { icon: UtensilsCrossed, label: "মিল কন্ট্রোল", href: "/admin-dashboard/meals-control" },
     { icon: FileText, label: "বিল জেনারেটর", href: "/admin-dashboard/bill-generator" },
+    { icon: FileText, label: "All user", href: "/admin-dashboard/user" },
+    { icon: FileText, label: "All Profile", href: "/admin-dashboard/Profile" },
   ],
   user: [
     { icon: LayoutDashboard, label: "ড্যাশবোর্ড", href: "/user-dashboard" },

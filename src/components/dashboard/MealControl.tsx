@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   UtensilsCrossed,
@@ -11,6 +11,7 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import useAxiosSecure from "@/hooks/useAxiosSecure";
 
 // টাইপ ডিফিনিশন
 interface MealStatus {
@@ -23,23 +24,53 @@ interface MealStatus {
   lastUpdated: string;
 }
 
+interface MealOrder {
+  _id: string;
+  userId: { _id: string; name: string; phone?: string; email?: string };
+  buildingId: string;
+  flatId: { _id: string; name: string } | string;
+  mealDate: string;
+  mealType: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  status: string;
+  createdAt: string;
+}
+
 const MealControl: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const axiosSecure = useAxiosSecure();
 
-  // স্যাম্পল ডেটা
-  const [mealData, setMealData] = useState<MealStatus[]>([
-    { id: "1", name: "সাকিব হাসান", room: "৩০১", breakfast: true, lunch: true, dinner: true, lastUpdated: "০৯:৩০ AM" },
-    { id: "2", name: "তানভীর আহমেদ", room: "৩০৪", breakfast: true, lunch: false, dinner: true, lastUpdated: "০৮:১৫ AM" },
-    { id: "3", name: "মাহমুদ উল্লাহ", room: "২০২", breakfast: false, lunch: true, dinner: true, lastUpdated: "১০:০০ AM" },
-    { id: "4", name: "মুশফিকুর রহিম", room: "১০৫", breakfast: true, lunch: true, dinner: false, lastUpdated: "০৭:৪৫ AM" },
-  ]);
+  const [orders, setOrders] = useState<MealOrder[]>([]);
+  const [date, setDate] = useState<string>("2026-01-27");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // মিল টগল করার ফাংশন
+  // স্যাম্পল টগল (অস্থায়ী)
   const toggleMeal = (id: string, type: 'breakfast' | 'lunch' | 'dinner') => {
-    setMealData(prev => prev.map(item => 
-      item.id === id ? { ...item, [type]: !item[type] } : item
+    setOrders(prev => prev.map(o =>
+      o._id === id ? { ...o, [type]: !((o as any)[type]) } as any : o,
     ));
   };
+
+  const fetchOrders = async (d: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await axiosSecure.get(`/meals/admin/orders/date/${d}`);
+      setOrders(res.data?.data || []);
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || "Failed to load orders");
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders(date);
+  }, [date]);
 
   return (
     <div className="space-y-6">
@@ -103,50 +134,52 @@ const MealControl: React.FC = () => {
       <div className="glass rounded-2xl border border-border/50 overflow-hidden">
         <div className="overflow-x-auto bg-linear-to-b from-card to-background/50">
           <table className="w-full text-sm text-left">
-            <thead className="bg-muted/50 text-muted-foreground uppercase text-[11px] font-bold tracking-wider">
+              <thead className="bg-muted/50 text-muted-foreground uppercase text-[11px] font-bold tracking-wider">
               <tr>
-                <th className="px-6 py-4">আবাসিক মেম্বার</th>
-                <th className="px-6 py-4 text-center">নাস্তা</th>
-                <th className="px-6 py-4 text-center">দুপুর</th>
-                <th className="px-6 py-4 text-center">রাত</th>
-                <th className="px-6 py-4 text-right">শেষ আপডেট</th>
+                <th className="px-6 py-4">ইউজার</th>
+                <th className="px-6 py-4 text-center">ফ্ল্যাট</th>
+                <th className="px-6 py-4 text-center">মিল টাইপ</th>
+                <th className="px-6 py-4 text-center">পরিমাণ</th>
+                <th className="px-6 py-4 text-center">মোট মূল্য</th>
+                <th className="px-6 py-4 text-right">স্ট্যাটাস</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
-              {mealData
-                .filter(item => item.name.includes(searchTerm) || item.room.includes(searchTerm))
-                .map((user) => (
-                <motion.tr 
-                  layout
-                  key={user.id} 
-                  className="hover:bg-primary/5 transition-colors group"
-                >
+              {loading && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-6 text-center">লোড হচ্ছে...</td>
+                </tr>
+              )}
+              {error && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-6 text-center text-destructive">{error}</td>
+                </tr>
+              )}
+              {!loading && !error && orders.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-6 text-center">No orders for {date}</td>
+                </tr>
+              )}
+
+              {orders
+                .filter(o => {
+                  const name = o.userId?.name || "";
+                  const flat = typeof o.flatId === "string" ? o.flatId : o.flatId?.name || "";
+                  return name.includes(searchTerm) || flat.includes(searchTerm) || o.mealType.includes(searchTerm);
+                })
+                .map((o) => (
+                <motion.tr layout key={o._id} className="hover:bg-primary/5 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
-                      <span className="font-bold group-hover:text-primary transition-colors">{user.name}</span>
-                      <span className="text-xs text-muted-foreground font-medium">রুম: {user.room}</span>
+                      <span className="font-bold group-hover:text-primary transition-colors">{o.userId?.name}</span>
+                      <span className="text-xs text-muted-foreground font-medium">{o.userId?.email}</span>
                     </div>
                   </td>
-                  
-                  {/* Meal Toggles */}
-                  {(['breakfast', 'lunch', 'dinner'] as const).map((meal) => (
-                    <td key={meal} className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => toggleMeal(user.id, meal)}
-                        className={`p-2 rounded-full transition-all transform active:scale-90 ${
-                          user[meal] 
-                            ? "bg-green-500/10 text-green-500 shadow-sm" 
-                            : "bg-destructive/10 text-destructive"
-                        }`}
-                      >
-                        {user[meal] ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-                      </button>
-                    </td>
-                  ))}
-
-                  <td className="px-6 py-4 text-right text-muted-foreground text-xs font-medium">
-                    {user.lastUpdated}
-                  </td>
+                  <td className="px-6 py-4 text-center">{typeof o.flatId === 'string' ? o.flatId : o.flatId?.name}</td>
+                  <td className="px-6 py-4 text-center capitalize">{o.mealType}</td>
+                  <td className="px-6 py-4 text-center">{o.quantity}</td>
+                  <td className="px-6 py-4 text-center">৳ {o.totalPrice}</td>
+                  <td className="px-6 py-4 text-right text-sm text-muted-foreground">{o.status}</td>
                 </motion.tr>
               ))}
             </tbody>
