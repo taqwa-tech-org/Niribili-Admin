@@ -30,10 +30,10 @@ interface MenuItem {
 
 const menuConfig: Record<Role, MenuItem[]> = {
   admin: [
-    { icon: LayoutDashboard, label: "এডমিন ড্যাশবোর্ড", href: "/" },
-    { icon: Users, label: "ইউজার ম্যানেজমেন্ট", href: "/users-management" },
-    { icon: UtensilsCrossed, label: "মিল কন্ট্রোল", href: "/meals-control" },
-    { icon: FileText, label: "বিল জেনারেটর", href: "/bill-generator" },
+    { icon: LayoutDashboard, label: "এডমিন ড্যাশবোর্ড", href: "/admin-dashboard" },
+    { icon: Users, label: "ইউজার ম্যানেজমেন্ট", href: "/admin-dashboard/users-management" },
+    { icon: UtensilsCrossed, label: "মিল কন্ট্রোল", href: "/admin-dashboard/meals-control" },
+    { icon: FileText, label: "বিল জেনারেটর", href: "/admin-dashboard/bill-generator" },
   ],
   user: [
     { icon: LayoutDashboard, label: "ড্যাশবোর্ড", href: "/user-dashboard" },
