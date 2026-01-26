@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   FileText, 
@@ -10,6 +10,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import useAxiosSecure from "@/hooks/useAxiosSecure";
 
 // টাইপ ডিফিনিশন
 interface BillingInput {
@@ -26,6 +27,30 @@ const BillingGenerator: React.FC = () => {
     fixedCharge: 3000,
     utilityCharge: 500,
   });
+
+  const axiosSecure = useAxiosSecure();
+  const [date, setDate] = useState<string>("2026-01-27");
+  const [summary, setSummary] = useState<Array<{ _id: string; totalQuantity: number; totalOrders: number; totalPrice: number }>>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchSummary = async (d: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await axiosSecure.get(`/meals/admin/summary/date/${d}`);
+      setSummary(res.data?.data || []);
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || "Failed to load summary");
+      setSummary([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSummary(date);
+  }, [date]);
 
   return (
     <div className="space-y-8">
@@ -108,7 +133,16 @@ const BillingGenerator: React.FC = () => {
           <div className="glass rounded-2xl border border-border/50 overflow-hidden flex flex-col h-full">
             <div className="p-6 border-b border-border/50 flex justify-between items-center bg-secondary/20">
               <h3 className="font-bold">বিল প্রিভিউ ({config.month})</h3>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="bg-secondary/50 border border-border rounded-xl p-2"
+                />
+                <Button variant="outline" size="sm" className="h-9" onClick={() => fetchSummary(date)}>
+                  <RefreshCcw className="w-3.5 h-3.5 mr-2" /> রিফ্রেশ
+                </Button>
                 <Button variant="outline" size="sm" className="h-9">
                   <Download className="w-3.5 h-3.5 mr-2" /> CSV
                 </Button>
@@ -122,33 +156,37 @@ const BillingGenerator: React.FC = () => {
               <table className="w-full text-sm text-left">
                 <thead className="bg-muted/30 text-muted-foreground uppercase text-[11px] font-bold">
                   <tr>
-                    <th className="px-6 py-4">ইউজার</th>
-                    <th className="px-6 py-4 text-center">মোট মিল</th>
-                    <th className="px-6 py-4 text-center">মিল খরচ</th>
-                    <th className="px-6 py-4 text-center">অন্যান্য</th>
-                    <th className="px-6 py-4 text-right">মোট বিল</th>
+                    <th className="px-6 py-4">মিল টাইপ</th>
+                    <th className="px-6 py-4 text-center">মোট পরিমাণ</th>
+                    <th className="px-6 py-4 text-center">অর্ডার সংখ্যা</th>
+                    <th className="px-6 py-4 text-center">মোট মূল্য</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
-                  {[
-                    { name: "সাকিব হাসান", meals: 52, other: 3500 },
-                    { name: "তানভীর আহমেদ", meals: 45, other: 3500 },
-                    { name: "মাহমুদ উল্লাহ", meals: 60, other: 3500 },
-                    { name: "মুশফিক রহিম", meals: 30, other: 3500 },
-                  ].map((user, i) => {
-                    const mealCost = user.meals * config.mealRate;
-                    const totalBill = mealCost + user.other;
-                    
-                    return (
-                      <tr key={i} className="hover:bg-primary/5 transition-colors group">
-                        <td className="px-6 py-4 font-bold">{user.name}</td>
-                        <td className="px-6 py-4 text-center font-medium">{user.meals}</td>
-                        <td className="px-6 py-4 text-center">৳ {mealCost}</td>
-                        <td className="px-6 py-4 text-center text-muted-foreground">৳ {user.other}</td>
-                        <td className="px-6 py-4 text-right font-bold text-primary">৳ {totalBill}</td>
-                      </tr>
-                    );
-                  })}
+                  {loading && (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-6 text-center">লোড হচ্ছে...</td>
+                    </tr>
+                  )}
+                  {error && (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-6 text-center text-destructive">{error}</td>
+                    </tr>
+                  )}
+                  {!loading && !error && summary.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-6 text-center">No summary for {date}</td>
+                    </tr>
+                  )}
+
+                  {summary.map((s, i) => (
+                    <tr key={i} className="hover:bg-primary/5 transition-colors group">
+                      <td className="px-6 py-4 font-bold capitalize">{s._id}</td>
+                      <td className="px-6 py-4 text-center font-medium">{s.totalQuantity}</td>
+                      <td className="px-6 py-4 text-center">{s.totalOrders}</td>
+                      <td className="px-6 py-4 text-center font-bold">৳ {s.totalPrice}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
