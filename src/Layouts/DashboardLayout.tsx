@@ -58,7 +58,7 @@ const DashboardLayout = ({ role = "admin" }: { role?: Role }) => {
   return (
     <div className="min-h-screen bg-background flex font-sans">
       {/* Sidebar - Desktop */}
-      <aside className="hidden border-r lg:flex w-64 flex-col fixed inset-y-0 left-0 z-50 bg-card">
+      <aside className="hidden border-r lg:flex w-56 flex-col fixed inset-y-0 left-0 z-50 bg-card">
         {/* Logo Section */}
         <div className="h-16 flex items-center gap-2 px-6 border-b border-border">
           <div className="w-8 h-8 rounded-lg bg-gradient-hero flex items-center justify-center shadow-glow">
@@ -129,7 +129,7 @@ const DashboardLayout = ({ role = "admin" }: { role?: Role }) => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 lg:ml-64 flex flex-col">
+      <div className="flex-1 lg:ml-24 flex flex-col">
         {/* Header */}
         <header className="h-16 glass sticky top-0 z-40 flex items-center justify-between px-4 md:px-8 border-b border-border/50">
           <Button
@@ -168,7 +168,7 @@ const DashboardLayout = ({ role = "admin" }: { role?: Role }) => {
         </header>
 
         {/* Page Content with Background Gradient */}
-        <main className="flex-1 overflow-y-auto bg-linear-to-b from-background to-secondary/15 p-4 md:p-8">
+        <main className="flex-1 overflow-y-auto bg-linear-to-b from-background to-secondary/15 p-2 md:p-4">
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 15 }}
