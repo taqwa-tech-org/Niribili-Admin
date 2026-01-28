@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import useAxiosSecure from '@/hooks/useAxiosSecure';
+import useAxiosSecure from '@/AllHooks/useAxiosSecure';
 import { Button } from '@/components/ui/button';
 
 interface UserItem {

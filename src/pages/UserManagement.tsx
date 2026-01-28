@@ -13,7 +13,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import useAxiosSecure from "@/hooks/useAxiosSecure";
+import useAxiosSecure from "@/AllHooks/useAxiosSecure";
 import Swal from "sweetalert2";
 
 // --- Types ---

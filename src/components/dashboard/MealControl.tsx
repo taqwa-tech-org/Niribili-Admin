@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import useAxiosSecure from "@/hooks/useAxiosSecure";
+import useAxiosSecure from "@/AllHooks/useAxiosSecure";
 
 
 interface MealStatus {

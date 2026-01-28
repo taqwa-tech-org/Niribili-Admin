@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { axiosSecure } from '@/hooks/useAxiosSecure';
+import { axiosSecure } from '@/AllHooks/useAxiosSecure';
 import Cookies from 'js-cookie';
 
 // Types
