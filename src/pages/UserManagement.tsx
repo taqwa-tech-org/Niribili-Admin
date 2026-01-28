@@ -13,7 +13,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import useAxiosSecure from "@/hooks/useAxiosSecure";
+import useAxiosSecure from "@/AllHooks/useAxiosSecure";
 import Swal from "sweetalert2";
 
 // --- Types ---
@@ -35,29 +35,50 @@ interface Flat {
 }
 interface UserProfile {
   _id: string;
-  guardianName: string;
-  whatsappNumber: string;
-  profilePhoto: string;
-  accountStatus: "process" | "approved" | "rejected";
-  buildingId: string;
-  flatId: string;
-  role: string;
+  // sometimes the API returns nested user details under `userId`
+  userId?: {
+    _id: string;
+    name: string;
+    phone?: string;
+    email?: string;
+    role?: string;
+    status?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  };
+  guardianName?: string;
+  guardianPhone?: string;
+  whatsappNumber?: string;
+  profilePhoto?: string;
+  nidPhoto?: string;
+  accountStatus?: "pending" | "process" | "approve" | string;
+  buildingId?: string | { _id: string; name: string };
+  flatId?: string | { _id: string; name: string };
+  role?: string;
+  emergencyContact?: string;
+  guardianRelation?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+type Selected = UserProfile | Building | Flat | null;
 
 const UserManagement = () => {
   const axiosSecure = useAxiosSecure();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [flats, setFlats] = useState<Flat[]>([]);
+
+  console.log(users);
+  
   const [modals, setModals] = useState({
     building: false,
     flat: false,
     user: false,
   });
-  const [selected, setSelected] = useState<any>(null);
+  const [selected, setSelected] = useState<Selected>(null);
   const [filterBuilding, setFilterBuilding] = useState<string>("all");
-
-  const fetchData = async () => {
+  const fetchData = React.useCallback(async () => {
     try {
       const [u, b, f] = await Promise.all([
         axiosSecure.get("/profile"),
@@ -67,21 +88,27 @@ const UserManagement = () => {
       setUsers(u.data?.data || u.data || []);
       setBuildings(b.data?.data || b.data || []);
       setFlats(f.data?.data || f.data || []);
-    } catch {
-      Swal.fire("Error!", "Failed to load data", "error");
+    } catch (err: unknown) {
+      let message = "Failed to load data";
+      if (err && typeof err === "object") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const e = err as any;
+        message = e?.response?.data?.message || e?.message || message;
+      }
+      Swal.fire("Error!", message, "error");
     }
-  };
+  }, [axiosSecure]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const filteredUsers =
     filterBuilding === "all"
       ? users
       : users.filter((u) => u.buildingId === filterBuilding);
 
-  const toggleModal = (type: keyof typeof modals, data: any = null) => {
+  const toggleModal = (type: keyof typeof modals, data: UserProfile | null = null) => {
     setSelected(data);
     setModals((prev) => ({ ...prev, [type]: !prev[type] }));
   };
@@ -115,13 +142,15 @@ const UserManagement = () => {
         await axiosSecure.delete(url);
         successAlert(`${itemType} deleted successfully`);
         fetchData(); // Refresh data after delete
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Delete Error:", err);
-        Swal.fire(
-          "Error!",
-          err.response?.data?.message || `Could not delete ${itemType}`,
-          "error",
-        );
+        let message = `Could not delete ${itemType}`;
+        if (err && typeof err === "object") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const e = err as any;
+          message = e?.response?.data?.message || e?.message || message;
+        }
+        Swal.fire("Error!", message, "error");
       }
     }
   };
@@ -140,12 +169,14 @@ const UserManagement = () => {
       }
       fetchData();
       toggleModal("building");
-    } catch (err: any) {
-      Swal.fire(
-        "Error!",
-        err.response?.data?.message || "Operation failed",
-        "error",
-      );
+    } catch (err: unknown) {
+      let message = "Operation failed";
+      if (err && typeof err === "object") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const e = err as any;
+        message = e?.response?.data?.message || e?.message || message;
+      }
+      Swal.fire("Error!", message, "error");
     }
   };
 
@@ -176,12 +207,14 @@ const UserManagement = () => {
       }
       fetchData();
       toggleModal("flat");
-    } catch (err: any) {
-      Swal.fire(
-        "Validation Error",
-        err.response?.data?.message || "Please check all fields",
-        "error",
-      );
+    } catch (err: unknown) {
+      let message = "Please check all fields";
+      if (err && typeof err === "object") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const e = err as any;
+        message = e?.response?.data?.message || e?.message || message;
+      }
+      Swal.fire("Validation Error", message, "error");
     }
   };
 
@@ -302,68 +335,74 @@ const UserManagement = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/10">
-                  {filteredUsers.map((u) => (
-                    <tr
-                      key={u._id}
-                      className="hover:bg-primary/[0.02] transition-colors"
-                    >
-                      <td className="p-5">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={u.profilePhoto}
-                            className="w-10 h-10 rounded-lg object-cover"
-                            onError={(e) =>
-                              (e.currentTarget.src =
-                                "https://github.com/shadcn.png")
-                            }
-                          />
-                          <div>
-                            <p className="font-bold text-sm leading-none mb-1">
-                              {u.guardianName}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground font-bold uppercase">
-                              {
-                                buildings.find((b) => b._id === u.buildingId)
-                                  ?.name
-                              }{" "}
-                              •{" "}
-                              {flats.find((f) => f._id === u.flatId)?.name ||
-                                "N/A"}
-                            </p>
+                  {filteredUsers.map((u) => {
+                    const name = u.userId?.name || u.guardianName || "Unknown";
+                    const phone = u.userId?.phone || u.guardianPhone || u.whatsappNumber || "-";
+                    const email = u.userId?.email || "-";
+                    const role = u.userId?.role || u.role || "user";
+                    const created = u.userId?.createdAt || u.createdAt || undefined;
+                    const buildingName = typeof u.buildingId === "string"
+                      ? buildings.find((b) => b._id === u.buildingId)?.name
+                      : (u.buildingId && typeof u.buildingId === "object")
+                        ? (u.buildingId as { name?: string }).name
+                        : undefined;
+                    const flatName = typeof u.flatId === "string"
+                      ? flats.find((f) => f._id === u.flatId)?.name
+                      : (u.flatId && typeof u.flatId === "object")
+                        ? (u.flatId as { name?: string }).name
+                        : undefined;
+
+                    return (
+                      <tr
+                        key={u._id}
+                        className="hover:bg-primary/[0.02] transition-colors"
+                      >
+                        <td className="p-5">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={u.profilePhoto || "https://github.com/shadcn.png"}
+                              className="w-10 h-10 rounded-lg object-cover"
+                              onError={(e) => (e.currentTarget.src = "https://github.com/shadcn.png")}
+                            />
+                            <div>
+                              <p className="font-bold text-sm leading-none mb-1">{name}</p>
+                              <p className="text-[11px] text-muted-foreground font-medium">{role} • {phone}</p>
+                              <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">{buildingName || "N/A"} • {flatName || "N/A"}</p>
+                              <p className="text-[10px] text-muted-foreground">{email}</p>
+                              {created && <p className="text-[10px] text-muted-foreground">Joined: {new Date(created).toLocaleDateString()}</p>}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="p-5">
-                        <span
-                          className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase border ${u.accountStatus === "process" ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20" : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"}`}
-                        >
-                          {u.accountStatus}
-                        </span>
-                      </td>
-                      <td className="p-5 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            onClick={() => toggleModal("user", u)}
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-lg"
+                        </td>
+                        <td className="p-5">
+                          <span
+                            className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase border ${u.accountStatus === "pending" || u.accountStatus === "process" ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20" : u.accountStatus === "approve" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-muted/10 text-muted-foreground border-border/20"}`}
                           >
-                            <Edit2 className="w-3.5" />
-                          </Button>
-                          <Button
-                            onClick={() =>
-                              handleDelete(`/profile/${u._id}`, "Resident")
-                            }
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-lg text-destructive"
-                          >
-                            <Trash2 className="w-3.5" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                              {u.accountStatus || u.userId?.status || "-"}
+                          </span>
+                        </td>
+                        <td className="p-5 text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              onClick={() => toggleModal("user", u)}
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg"
+                            >
+                              <Edit2 className="w-3.5" />
+                            </Button>
+                            <Button
+                              onClick={() => handleDelete(`/profile/${u._id}`, "Resident")}
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg text-destructive"
+                            >
+                              <Trash2 className="w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -389,7 +428,7 @@ const UserManagement = () => {
               <form onSubmit={handleBuildingSubmit} className="space-y-4">
                 <input
                   name="name"
-                  defaultValue={selected?.name || ""}
+                  defaultValue={selected && 'name' in selected ? selected.name : ""}
                   placeholder="E.g. Green Villa"
                   required
                   className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border outline-none text-sm font-bold"
@@ -437,7 +476,11 @@ const UserManagement = () => {
                     <label>Building</label>
                     <select
                       name="buildingId"
-                      defaultValue={selected?.buildingId || ""}
+                      defaultValue={
+                        selected && 'buildingId' in selected
+                          ? (typeof selected.buildingId === 'string' ? selected.buildingId : selected.buildingId._id)
+                          : ''
+                      }
                       required
                       className="w-full h-12 px-4 rounded-xl bg-secondary/50 border border-border outline-none"
                     >
@@ -453,7 +496,7 @@ const UserManagement = () => {
                     <label>Flat Name</label>
                     <input
                       name="name"
-                      defaultValue={selected?.name}
+                      defaultValue={selected && 'name' in selected ? selected.name : ''}
                       required
                       className="w-full h-12 px-4 rounded-xl bg-secondary/50 border border-border outline-none"
                     />
@@ -570,7 +613,10 @@ const UserManagement = () => {
       <AnimatePresence>
         {modals.user && selected && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-            <motion.div
+            {(() => {
+              const sel = selected as UserProfile;
+              return (
+                <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               className="bg-card w-full max-w-lg p-6 rounded-[2.5rem] border border-border shadow-2xl"
@@ -586,7 +632,7 @@ const UserManagement = () => {
                   <label>Guardian</label>
                   <input
                     name="guardianName"
-                    defaultValue={selected.guardianName}
+                    defaultValue={sel.guardianName ?? sel.userId?.name ?? ""}
                     className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border font-bold text-sm"
                   />
                 </div>
@@ -594,7 +640,7 @@ const UserManagement = () => {
                   <label>WhatsApp</label>
                   <input
                     name="whatsappNumber"
-                    defaultValue={selected.whatsappNumber}
+                    defaultValue={sel.whatsappNumber ?? sel.userId?.phone ?? ""}
                     className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border font-bold text-sm"
                   />
                 </div>
@@ -602,19 +648,19 @@ const UserManagement = () => {
                   <label>Status</label>
                   <select
                     name="accountStatus"
-                    defaultValue={selected.accountStatus}
+                    defaultValue={sel.accountStatus ?? sel.userId?.status ?? ""}
                     className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border font-bold"
                   >
+                    <option value="pending">Pending</option>
                     <option value="process">Processing</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
+                    <option value="approve">Approved</option>
                   </select>
                 </div>
                 <div className="space-y-1">
                   <label>Role</label>
                   <select
                     name="role"
-                    defaultValue={selected.role}
+                    defaultValue={sel.role ?? sel.userId?.role ?? "user"}
                     className="w-full h-11 px-4 rounded-xl bg-secondary/50 border border-border font-bold"
                   >
                     <option value="user">Resident</option>
@@ -638,7 +684,9 @@ const UserManagement = () => {
                   </Button>
                 </div>
               </form>
-            </motion.div>
+                </motion.div>
+              );
+            })()}
           </div>
         )}
       </AnimatePresence>

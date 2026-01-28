@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import useAxiosSecure from '@/hooks/useAxiosSecure';
+import useAxiosSecure from '@/AllHooks/useAxiosSecure';
 import { Button } from '@/components/ui/button';
 
 interface ProfileItem {
@@ -30,10 +30,7 @@ const AllProfile: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [tab, setTab] = useState<'pending' | 'process' | 'approve' | 'deleted'>('pending');
     const [search, setSearch] = useState('');
-    const [selectedProfile, setSelectedProfile] = useState<ProfileItem | null>(null);
-
-    console.log(profiles);
-    
+    const [selectedProfile, setSelectedProfile] = useState<ProfileItem | null>(null); 
 
     const fetchProfiles = async () => {
         try {
@@ -241,10 +238,7 @@ const AllProfile: React.FC = () => {
                                             <p className="text-sm text-muted-foreground">Room</p>
                                             <p className="font-bold">{selectedProfile.room || '-'}</p>
                                         </div>
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">Bill ID</p>
-                                            <p className="font-bold">{selectedProfile.billId || '-'}</p>
-                                        </div>
+                                      
                                     </div>
                                 </div>
 
