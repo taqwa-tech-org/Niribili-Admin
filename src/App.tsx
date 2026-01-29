@@ -1,20 +1,15 @@
-import { useState } from 'react'
-// import reactLogo from './assets/react.svg'
-// import viteLogo from '/vite.svg'
+import { Outlet } from 'react-router-dom'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
 
   return (
     <>
-         <div>
-          <h2>
-             Hello niribili admin panel !
-            </h2>
-          </div>
+      <div>
+        <Outlet />
+      </div>
     </>
   )
-}
+};
 
-export default App
+export default App;
