@@ -33,10 +33,11 @@ const menuConfig: Record<Role, MenuItem[]> = {
   admin: [
     { icon: LayoutDashboard, label: "এডমিন ড্যাশবোর্ড", href: "/admin-dashboard" },
     { icon: Users, label: "ইউজার ম্যানেজমেন্ট", href: "/admin-dashboard/users-management" },
+    { icon: Users, label: "বিল্ডিং ম্যানেজমেন্ট", href: "/admin-dashboard/building-management" },
     { icon: UtensilsCrossed, label: "মিল কন্ট্রোল", href: "/admin-dashboard/meals-control" },
     { icon: FileText, label: "বিল জেনারেটর", href: "/admin-dashboard/bill-generator" },
-    { icon: FileText, label: "All user", href: "/admin-dashboard/user" },
-    { icon: FileText, label: "All Profile", href: "/admin-dashboard/Profile" },
+    { icon: FileText, label: "সব ইউজার", href: "/admin-dashboard/user" },
+    { icon: FileText, label: "সব প্রোফাইল", href: "/admin-dashboard/Profile" },
   ],
   user: [
     { icon: LayoutDashboard, label: "ড্যাশবোর্ড", href: "/user-dashboard" },
