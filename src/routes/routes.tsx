@@ -11,6 +11,7 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import NotFound from "@/pages/NotFound";
 import UserManagement from "@/pages/UserManagement";
 import { createBrowserRouter } from "react-router-dom";
+import BuildingManagement from "@/pages/BuildingManagement";
 
 
 const appRoutes = createBrowserRouter([
@@ -31,6 +32,7 @@ const appRoutes = createBrowserRouter([
     children: [
       { index: true, element: <AdminDashboard /> },
       { path: "/admin-dashboard/users-management", element: <UserManagement /> },
+      { path: "/admin-dashboard/building-management", element: <BuildingManagement /> },
       { path: "/admin-dashboard/meals-control", element: <MealControl /> },
       { path: "/admin-dashboard/lock-expired", element: <LockExpired /> },
       { path: "/admin-dashboard/bill-generator", element: <BillingGenerator /> },
