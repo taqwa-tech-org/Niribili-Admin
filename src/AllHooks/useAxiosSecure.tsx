@@ -42,7 +42,7 @@ const processQueue = (error: Error | null, token: string | null = null) => {
 
 const createAxiosSecure = (): AxiosInstance => {
   const axiosSecure = axios.create({
-    baseURL: "http://localhost:8080/api/v1",
+    baseURL: import.meta.env.VITE_SERVER_URL,
     headers: {
       "Content-Type": "application/json",
     },
@@ -88,8 +88,8 @@ const createAxiosSecure = (): AxiosInstance => {
           }
 
           const res = await axios.post<RefreshTokenResponse>(
-            "http://localhost:8080/api/v1/auth/refresh-token",
-            { refreshToken }
+            `${import.meta.env.VITE_SERVER_URL}/auth/refresh-token`,
+            { refreshToken },
           );
 
           const { accessToken } = res.data.data;
@@ -118,7 +118,7 @@ const createAxiosSecure = (): AxiosInstance => {
       }
 
       return Promise.reject(error);
-    }
+    },
   );
 
   return axiosSecure;
