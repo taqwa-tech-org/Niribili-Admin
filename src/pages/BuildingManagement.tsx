@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Eye, Building2, DoorOpen, Plus, Edit2, Trash2, Users, ArrowRight, X
+  Eye, Building2, DoorOpen, Plus, Edit2, Trash2, Users, ArrowRight, X, Phone, Mail, User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import useAxiosSecure from "@/AllHooks/useAxiosSecure";
@@ -27,8 +27,9 @@ const BuildingManagement = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
   const [selectedFlatId, setSelectedFlatId] = useState<string | null>(null);
-  const [modals, setModals] = useState({ building: false, flat: false });
+  const [modals, setModals] = useState({ building: false, flat: false, details: false }); // Added details modal
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [viewingUser, setViewingUser] = useState<UserProfile | null>(null); // State for single user view
 
   const fetchData = useCallback(async () => {
     try {
@@ -106,7 +107,7 @@ const BuildingManagement = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen bg-background text-foreground space-y-6 lg:space-y-10">
       
-      {/* Responsive Header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-linear-to-b from-card/60 to-transparent p-5 sm:p-8 rounded-[2rem] border border-border/40 shadow-sm">
         <div className="space-y-1">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-black uppercase tracking-tighter">Property Assets</h1>
@@ -123,8 +124,7 @@ const BuildingManagement = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-10">
-        
-        {/* Building Section: 12 Col Mobile -> 5 Col Desktop */}
+        {/* Building Section */}
         <div className="lg:col-span-5 space-y-4">
           <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 px-2">
             <Building2 className="w-4 h-4" /> Core Buildings
@@ -163,7 +163,7 @@ const BuildingManagement = () => {
           </div>
         </div>
 
-        {/* Flats Section: 12 Col Mobile -> 7 Col Desktop */}
+        {/* Flats Section */}
         <div className="lg:col-span-7">
           <AnimatePresence mode="wait">
             {selectedBuildingId ? (
@@ -197,7 +197,7 @@ const BuildingManagement = () => {
         </div>
       </div>
 
-      {/* Resident Table: Full Width */}
+      {/* Resident Table */}
       <AnimatePresence>
         {selectedFlatId && (
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }} className="space-y-4 pt-6">
@@ -233,11 +233,18 @@ const BuildingManagement = () => {
                         </td>
                         <td className="p-5">
                           <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase border ${u.accountStatus === "approve" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20"}`}>
-                            {u.accountStatus || "Pending Review"}
+                            {u.accountStatus === "approve" ? "Approved" : "Pending Review"}
                           </span>
                         </td>
                         <td className="p-5 text-right">
-                          <Button size="icon" variant="secondary" className="h-9 w-9 rounded-xl shadow-sm"><Eye className="w-4" /></Button>
+                          <Button 
+                            onClick={() => { setViewingUser(u); setModals({ ...modals, details: true }); }}
+                            size="icon" 
+                            variant="secondary" 
+                            className="h-9 w-9 rounded-xl shadow-sm hover:bg-primary hover:text-white transition-all"
+                          >
+                            <Eye className="w-4" />
+                          </Button>
                         </td>
                       </tr>
                     ))
@@ -251,51 +258,110 @@ const BuildingManagement = () => {
         )}
       </AnimatePresence>
 
-      {/* Unified Modal Backdrop Component */}
-      {(modals.building || modals.flat) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/90 backdrop-blur-md">
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-card w-full max-w-md p-8 sm:p-10 rounded-[3rem] border border-border/80 shadow-2xl relative">
-            <button onClick={() => setModals({ building: false, flat: false })} className="absolute top-6 right-6 p-2 hover:bg-secondary rounded-full transition-colors"><X size={20} /></button>
-            
-            {modals.building ? (
-              <div className="space-y-6">
-                <div className="space-y-1">
-                  <h3 className="text-2xl font-black uppercase tracking-tighter">{selectedItem ? "Modify" : "Establish"} Building</h3>
-                  <p className="text-xs text-muted-foreground font-bold">Set the core identification for your property.</p>
+      {/* --- Modals --- */}
+      <AnimatePresence>
+        {(modals.building || modals.flat || modals.details) && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/90 backdrop-blur-md">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-card w-full max-w-md p-8 sm:p-10 rounded-[3rem] border border-border/80 shadow-2xl relative"
+            >
+              <button onClick={() => setModals({ building: false, flat: false, details: false })} className="absolute top-6 right-6 p-2 hover:bg-secondary rounded-full transition-colors"><X size={20} /></button>
+              
+              {/* User Details View */}
+              {modals.details && viewingUser && (
+                <div className="space-y-8">
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <div className="relative">
+                      <img src={viewingUser.profilePhoto || "https://github.com/shadcn.png"} className="w-24 h-24 rounded-[2rem] object-cover border-4 border-primary/20 p-1 shadow-lg" alt="Profile" />
+                      <div className={`absolute -bottom-2 -right-2 px-3 py-1 rounded-lg text-[8px] font-black uppercase border shadow-sm ${viewingUser.accountStatus === "approve" ? "bg-emerald-500 text-white border-none" : "bg-amber-500 text-white border-none"}`}>
+                         {viewingUser.accountStatus || "Pending"}
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-black uppercase tracking-tighter">{viewingUser.userId?.name || viewingUser.guardianName}</h3>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Registered Resident</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-secondary/30">
+                      <div className="p-2.5 bg-background rounded-xl text-primary"><Phone size={18} /></div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Mobile Contact</p>
+                        <p className="text-sm font-bold">{viewingUser.userId?.phone || "No phone provided"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-secondary/30">
+                      <div className="p-2.5 bg-background rounded-xl text-primary"><Mail size={18} /></div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Email Address</p>
+                        <p className="text-sm font-bold truncate max-w-[200px]">{viewingUser.userId?.email || "No email provided"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-primary/5 border border-primary/10">
+                      <div className="p-2.5 bg-background rounded-xl text-primary"><Building2 size={18} /></div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase text-primary tracking-widest">Location Info</p>
+                        <p className="text-sm font-bold">
+                          {typeof viewingUser.buildingId === 'object' ? viewingUser.buildingId?.name : buildings.find(b => b._id === viewingUser.buildingId)?.name}
+                          <span className="mx-2 text-muted-foreground">/</span>
+                          {typeof viewingUser.flatId === 'object' ? viewingUser.flatId?.name : flats.find(f => f._id === viewingUser.flatId)?.name}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button onClick={() => setModals({ ...modals, details: false })} className="w-full h-14 bg-primary font-black rounded-2xl uppercase tracking-widest">Close Profile</Button>
                 </div>
-                <form onSubmit={handleBuildingSubmit} className="space-y-5">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-primary ml-1">Official Building Name</label>
-                    <input name="name" defaultValue={selectedItem?.name} required placeholder="e.g. Sky Tower A" className="w-full h-14 px-5 rounded-2xl bg-secondary/40 border border-border outline-hidden focus:ring-2 focus:ring-primary/20 font-bold text-sm transition-all" />
+              )}
+
+              {/* Building Form */}
+              {modals.building && (
+                <div className="space-y-6">
+                  <div className="space-y-1">
+                    <h3 className="text-2xl font-black uppercase tracking-tighter">{selectedItem ? "Modify" : "Establish"} Building</h3>
+                    <p className="text-xs text-muted-foreground font-bold">Set the core identification for your property.</p>
                   </div>
-                  <Button type="submit" className="w-full h-14 bg-primary font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-primary/25 transition-transform active:scale-95">Synchronize Data</Button>
-                </form>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="space-y-1">
-                  <h3 className="text-2xl font-black uppercase tracking-tighter">{selectedItem ? "Refine" : "Allocate"} Flat</h3>
-                  <p className="text-xs text-muted-foreground font-bold">Assign units to their respective parent buildings.</p>
+                  <form onSubmit={handleBuildingSubmit} className="space-y-5">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-primary ml-1">Official Building Name</label>
+                      <input name="name" defaultValue={selectedItem?.name} required placeholder="e.g. Sky Tower A" className="w-full h-14 px-5 rounded-2xl bg-secondary/40 border border-border outline-hidden focus:ring-2 focus:ring-primary/20 font-bold text-sm transition-all" />
+                    </div>
+                    <Button type="submit" className="w-full h-14 bg-primary font-black rounded-2xl uppercase tracking-widest">Synchronize Data</Button>
+                  </form>
                 </div>
-                <form onSubmit={handleFlatSubmit} className="space-y-5">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-primary ml-1">Parent Asset</label>
-                    <select name="buildingId" defaultValue={selectedItem?.buildingId || selectedBuildingId || ""} className="w-full h-14 px-5 rounded-2xl bg-secondary/40 border border-border outline-hidden focus:ring-2 focus:ring-primary/20 font-bold text-sm appearance-none">
-                      <option value="" disabled>Select Building</option>
-                      {buildings.map((b) => <option key={b._id} value={b._id}>{b.name}</option>)}
-                    </select>
+              )}
+
+              {/* Flat Form */}
+              {modals.flat && (
+                <div className="space-y-6">
+                  <div className="space-y-1">
+                    <h3 className="text-2xl font-black uppercase tracking-tighter">{selectedItem ? "Refine" : "Allocate"} Flat</h3>
+                    <p className="text-xs text-muted-foreground font-bold">Assign units to their respective parent buildings.</p>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-primary ml-1">Unit Designation</label>
-                    <input name="name" defaultValue={selectedItem?.name} required placeholder="e.g. Suite 402" className="w-full h-14 px-5 rounded-2xl bg-secondary/40 border border-border outline-hidden focus:ring-2 focus:ring-primary/20 font-bold text-sm" />
-                  </div>
-                  <Button type="submit" className="w-full h-14 bg-primary font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-primary/25">Confirm Allocation</Button>
-                </form>
-              </div>
-            )}
-          </motion.div>
-        </div>
-      )}
+                  <form onSubmit={handleFlatSubmit} className="space-y-5">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-primary ml-1">Parent Asset</label>
+                      <select name="buildingId" defaultValue={selectedItem?.buildingId || selectedBuildingId || ""} className="w-full h-14 px-5 rounded-2xl bg-secondary/40 border border-border outline-hidden focus:ring-2 focus:ring-primary/20 font-bold text-sm appearance-none">
+                        <option value="" disabled>Select Building</option>
+                        {buildings.map((b) => <option key={b._id} value={b._id}>{b.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-primary ml-1">Unit Designation</label>
+                      <input name="name" defaultValue={selectedItem?.name} required placeholder="e.g. Suite 402" className="w-full h-14 px-5 rounded-2xl bg-secondary/40 border border-border outline-hidden focus:ring-2 focus:ring-primary/20 font-bold text-sm" />
+                    </div>
+                    <Button type="submit" className="w-full h-14 bg-primary font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-primary/25">Confirm Allocation</Button>
+                  </form>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
