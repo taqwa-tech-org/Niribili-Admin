@@ -31,15 +31,15 @@ const AuthComponent: React.FC = () => {
       if (isLogin) {
         // ✅ LOGIN
         const res = await axios.post(
-          "http://localhost:8080/api/v1/auth/login",
+          `${import.meta.env.VITE_SERVER_URL}/auth/login`,
           {
             email,
             password,
           },
         );
-        
+
         const { accessToken, refreshToken } = res.data.data;
-        
+
         // ✅ Use AuthContext login (stores in cookies + fetches user)
         await login(accessToken, refreshToken);
 
@@ -48,7 +48,7 @@ const AuthComponent: React.FC = () => {
         navigate("/admin-dashboard");
       } else {
         // ✅ REGISTER
-        await axios.post("http://localhost:8080/api/v1/user/register", {
+        await axios.post(`${import.meta.env.VITE_SERVER_URL}/user/register`, {
           name,
           phone,
           email,
