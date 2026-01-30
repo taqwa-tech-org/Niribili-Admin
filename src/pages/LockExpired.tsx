@@ -48,6 +48,10 @@ const LockExpired: React.FC = () => {
   const [usersData, setUsersData] = useState<Record<string, UserData>>({});
   const [loadingUsers, setLoadingUsers] = useState(false);
 
+  
+  console.log('locked', result);
+  
+
   const handleLock = async () => {
     setLoading(true);
     setError(null);

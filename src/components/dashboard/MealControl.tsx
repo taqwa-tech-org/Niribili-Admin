@@ -55,7 +55,6 @@ const MealControl: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [mealCount, setMealCount] = useState([])
 
-  console.log(orders);
   
 
   // স্যাম্পল টগল (অস্থায়ী)
@@ -92,7 +91,6 @@ const MealControl: React.FC = () => {
           `meals/admin/summary/date/${date}`
         );
         setMealCount(response?.data?.data)
-        console.log("meal order data", response.data.data);
       } catch (error) {
         console.error(error);
       }
