@@ -42,7 +42,7 @@ const BuildingManagement = () => {
       setFlats(f.data?.data || f.data || []);
       setUsers(u.data?.data || u.data || []);
     } catch (err) {
-      Swal.fire("Error", "Failed to load property data", "error");
+      Swal.fire("ত্রুটি", "সম্পত্তির তথ্য লোড করতে ব্যর্থ", "error");
     }
   }, [axiosSecure]);
 
@@ -65,19 +65,20 @@ const BuildingManagement = () => {
 
   const handleDelete = async (url: string, type: string) => {
     const result = await Swal.fire({
-      title: `Delete ${type}?`,
-      text: "All associated data will be affected!",
+      title: `${type} মুছবেন?`,
+      text: "সকল সংশ্লিষ্ট তথ্য প্রভাবিত হবে!",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#ef4444",
-      confirmButtonText: "Yes, Delete",
+      confirmButtonText: "হ্যাঁ, মুছুন",
+      cancelButtonText: "বাতিল",
     });
     if (result.isConfirmed) {
       await axiosSecure.delete(url);
       fetchData();
-      if (type === "Building") setSelectedBuildingId(null);
-      if (type === "Flat") setSelectedFlatId(null);
-      Swal.fire("Deleted!", "", "success");
+      if (type === "বিল্ডিং") setSelectedBuildingId(null);
+      if (type === "ফ্লাট") setSelectedFlatId(null);
+      Swal.fire("মুছে ফেলা হয়েছে!", "", "success");
     }
   };
 
@@ -89,7 +90,7 @@ const BuildingManagement = () => {
       else await axiosSecure.post("/buildings", { name });
       setModals({ ...modals, building: false });
       fetchData();
-    } catch (err) { Swal.fire("Error", "Action failed", "error"); }
+    } catch (err) { Swal.fire("ত্রুটি", "কাজটি ব্যর্থ হয়েছে", "error"); }
   };
 
   const handleFlatSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -101,7 +102,7 @@ const BuildingManagement = () => {
       else await axiosSecure.post("/flats", payload);
       setModals({ ...modals, flat: false });
       fetchData();
-    } catch (err) { Swal.fire("Error", "Check all fields", "error"); }
+    } catch (err) { Swal.fire("ত্রুটি", "সকল ক্ষেত্র পরীক্ষা করুন", "error"); }
   };
 
   return (
@@ -110,15 +111,15 @@ const BuildingManagement = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-linear-to-b from-card/60 to-transparent p-5 sm:p-8 rounded-[2rem] border border-border/40 shadow-sm">
         <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black uppercase tracking-tighter">Property Assets</h1>
-          <p className="text-[10px] sm:text-xs text-muted-foreground font-bold tracking-widest uppercase">Inventory & Resident Management</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black uppercase tracking-tighter">নতুন বিল্ডিং ও ফ্লাট যুক্ত করুন</h1>
+          <p className="text-[10px] sm:text-xs text-muted-foreground font-bold tracking-widest uppercase">তালিকা ও বাসিন্দা ব্যবস্থাপনা</p>
         </div>
         <div className="flex w-full sm:w-auto gap-2">
           <Button onClick={() => { setSelectedItem(null); setModals({ ...modals, building: true }); }} variant="outline" className="flex-1 sm:flex-none rounded-xl font-bold text-xs h-11">
-            <Plus className="w-4 h-4 mr-1 sm:mr-2" /> Building
+            <Plus className="w-4 h-4 mr-1 sm:mr-2" /> বিল্ডিং
           </Button>
           <Button onClick={() => { setSelectedItem(null); setModals({ ...modals, flat: true }); }} className="flex-1 sm:flex-none rounded-xl font-bold bg-primary text-xs h-11">
-            <DoorOpen className="w-4 h-4 mr-1 sm:mr-2" /> New Flat
+            <DoorOpen className="w-4 h-4 mr-1 sm:mr-2" /> নতুন ফ্লাট
           </Button>
         </div>
       </div>
@@ -127,7 +128,7 @@ const BuildingManagement = () => {
         {/* Building Section */}
         <div className="lg:col-span-5 space-y-4">
           <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 px-2">
-            <Building2 className="w-4 h-4" /> Core Buildings
+            <Building2 className="w-4 h-4" /> মূল বিল্ডিং সমূহ
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
             {buildings.map((b) => (
@@ -145,7 +146,7 @@ const BuildingManagement = () => {
                         <Users className="w-3 h-3" /> {getResidentCount(b._id)}
                       </span>
                       <span className="flex items-center gap-1.5 text-[9px] font-black text-muted-foreground bg-muted/40 px-2.5 py-1 rounded-full uppercase">
-                        <DoorOpen className="w-3 h-3" /> {flats.filter((f) => f.buildingId === b._id).length} Units
+                        <DoorOpen className="w-3 h-3" /> {flats.filter((f) => f.buildingId === b._id).length} ইউনিট
                       </span>
                     </div>
                   </div>
@@ -153,7 +154,7 @@ const BuildingManagement = () => {
                     <Button size="icon" variant="ghost" className="h-8 w-8 rounded-xl hover:bg-primary/10" onClick={(e) => { e.stopPropagation(); setSelectedItem(b); setModals({ ...modals, building: true }); }}>
                       <Edit2 className="w-3.5" />
                     </Button>
-                    <Button size="icon" variant="ghost" className="h-8 w-8 rounded-xl text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); handleDelete(`/buildings/${b._id}`, "Building"); }}>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 rounded-xl text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); handleDelete(`/buildings/${b._id}`, "বিল্ডিং"); }}>
                       <Trash2 className="w-3.5" />
                     </Button>
                   </div>
@@ -169,7 +170,7 @@ const BuildingManagement = () => {
             {selectedBuildingId ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
                 <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 px-2">
-                  <ArrowRight className="w-4 h-4" /> Units in {buildings.find((b) => b._id === selectedBuildingId)?.name}
+                  <ArrowRight className="w-4 h-4" /> {buildings.find((b) => b._id === selectedBuildingId)?.name} এর ইউনিট সমূহ
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                   {flats.filter((f) => f.buildingId === selectedBuildingId).map((f) => (
@@ -181,7 +182,7 @@ const BuildingManagement = () => {
                       <span className="font-bold text-xs sm:text-sm uppercase tracking-tighter truncate mr-2">{f.name}</span>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={(e) => { e.stopPropagation(); setSelectedItem(f); setModals({ ...modals, flat: true }); }} className="p-1 hover:bg-white/20 rounded-md"><Edit2 className="w-3" /></button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDelete(`/flats/${f._id}`, "Flat"); }} className="p-1 hover:bg-white/20 rounded-md text-red-300"><Trash2 className="w-3" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(`/flats/${f._id}`, "ফ্লাট"); }} className="p-1 hover:bg-white/20 rounded-md text-red-300"><Trash2 className="w-3" /></button>
                       </div>
                     </div>
                   ))}
@@ -190,7 +191,7 @@ const BuildingManagement = () => {
             ) : (
               <div className="h-48 sm:h-64 flex flex-col items-center justify-center border-2 border-dashed border-border/60 rounded-[2.5rem] text-muted-foreground bg-card/20">
                 <Building2 className="w-10 h-10 mb-3 opacity-10" />
-                <p className="text-[10px] font-black uppercase tracking-widest px-6 text-center">Select a building to explore available units</p>
+                <p className="text-[10px] font-black uppercase tracking-widest px-6 text-center">উপলব্ধ ইউনিট দেখতে একটি বিল্ডিং নির্বাচন করুন</p>
               </div>
             )}
           </AnimatePresence>
@@ -203,16 +204,16 @@ const BuildingManagement = () => {
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }} className="space-y-4 pt-6">
             <div className="flex items-center gap-2 px-2">
               <Users className="w-5 h-5 text-primary" />
-              <h2 className="text-[10px] font-black uppercase tracking-widest">Resident Roster: {flats.find((f) => f._id === selectedFlatId)?.name}</h2>
+              <h2 className="text-[10px] font-black uppercase tracking-widest">বাসিন্দা তালিকা: {flats.find((f) => f._id === selectedFlatId)?.name}</h2>
             </div>
             <div className="bg-card border border-border/40 rounded-[2.5rem] overflow-hidden shadow-2xl overflow-x-auto">
               <table className="w-full text-left min-w-[600px]">
                 <thead className="bg-muted/40 text-[9px] font-black uppercase text-muted-foreground border-b border-border/20">
                   <tr>
-                    <th className="p-6">Resident Profile</th>
-                    <th className="p-6">Contact & Outreach</th>
-                    <th className="p-6">Verification</th>
-                    <th className="p-6 text-right">Actions</th>
+                    <th className="p-6">বাসিন্দা প্রোফাইল</th>
+                    <th className="p-6">যোগাযোগ ও সংযোগ</th>
+                    <th className="p-6">যাচাইকরণ</th>
+                    <th className="p-6 text-right">কার্যক্রম</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/10">
@@ -229,11 +230,11 @@ const BuildingManagement = () => {
                           </div>
                         </td>
                         <td className="p-5">
-                          <p className="text-xs font-black text-foreground/80">{u.userId?.phone || "N/A"}</p>
+                          <p className="text-xs font-black text-foreground/80">{u.userId?.phone || "নেই"}</p>
                         </td>
                         <td className="p-5">
                           <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase border ${u.accountStatus === "approve" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20"}`}>
-                            {u.accountStatus === "approve" ? "Approved" : "Pending Review"}
+                            {u.accountStatus === "approve" ? "অনুমোদিত" : "পর্যালোচনা অপেক্ষমাণ"}
                           </span>
                         </td>
                         <td className="p-5 text-right">
@@ -249,7 +250,7 @@ const BuildingManagement = () => {
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan={4} className="p-16 text-center text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">No assigned residents found</td></tr>
+                    <tr><td colSpan={4} className="p-16 text-center text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">কোন নির্ধারিত বাসিন্দা পাওয়া যায়নি</td></tr>
                   )}
                 </tbody>
               </table>
@@ -277,12 +278,12 @@ const BuildingManagement = () => {
                     <div className="relative">
                       <img src={viewingUser.profilePhoto || "https://github.com/shadcn.png"} className="w-24 h-24 rounded-[2rem] object-cover border-4 border-primary/20 p-1 shadow-lg" alt="Profile" />
                       <div className={`absolute -bottom-2 -right-2 px-3 py-1 rounded-lg text-[8px] font-black uppercase border shadow-sm ${viewingUser.accountStatus === "approve" ? "bg-emerald-500 text-white border-none" : "bg-amber-500 text-white border-none"}`}>
-                         {viewingUser.accountStatus || "Pending"}
+                         {viewingUser.accountStatus === "approve" ? "অনুমোদিত" : "অপেক্ষমাণ"}
                       </div>
                     </div>
                     <div>
                       <h3 className="text-2xl font-black uppercase tracking-tighter">{viewingUser.userId?.name || viewingUser.guardianName}</h3>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Registered Resident</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">নিবন্ধিত বাসিন্দা</p>
                     </div>
                   </div>
 
@@ -290,21 +291,21 @@ const BuildingManagement = () => {
                     <div className="flex items-center gap-4 p-4 rounded-2xl bg-secondary/30">
                       <div className="p-2.5 bg-background rounded-xl text-primary"><Phone size={18} /></div>
                       <div>
-                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Mobile Contact</p>
-                        <p className="text-sm font-bold">{viewingUser.userId?.phone || "No phone provided"}</p>
+                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">মোবাইল যোগাযোগ</p>
+                        <p className="text-sm font-bold">{viewingUser.userId?.phone || "ফোন নম্বর প্রদান করা হয়নি"}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 p-4 rounded-2xl bg-secondary/30">
                       <div className="p-2.5 bg-background rounded-xl text-primary"><Mail size={18} /></div>
                       <div>
-                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Email Address</p>
-                        <p className="text-sm font-bold truncate max-w-[200px]">{viewingUser.userId?.email || "No email provided"}</p>
+                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">ইমেইল ঠিকানা</p>
+                        <p className="text-sm font-bold truncate max-w-[200px]">{viewingUser.userId?.email || "ইমেইল প্রদান করা হয়নি"}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 p-4 rounded-2xl bg-primary/5 border border-primary/10">
                       <div className="p-2.5 bg-background rounded-xl text-primary"><Building2 size={18} /></div>
                       <div>
-                        <p className="text-[9px] font-black uppercase text-primary tracking-widest">Location Info</p>
+                        <p className="text-[9px] font-black uppercase text-primary tracking-widest">অবস্থান তথ্য</p>
                         <p className="text-sm font-bold">
                           {typeof viewingUser.buildingId === 'object' ? viewingUser.buildingId?.name : buildings.find(b => b._id === viewingUser.buildingId)?.name}
                           <span className="mx-2 text-muted-foreground">/</span>
@@ -314,7 +315,7 @@ const BuildingManagement = () => {
                     </div>
                   </div>
 
-                  <Button onClick={() => setModals({ ...modals, details: false })} className="w-full h-14 bg-primary font-black rounded-2xl uppercase tracking-widest">Close Profile</Button>
+                  <Button onClick={() => setModals({ ...modals, details: false })} className="w-full h-14 bg-primary font-black rounded-2xl uppercase tracking-widest">প্রোফাইল বন্ধ করুন</Button>
                 </div>
               )}
 
@@ -322,15 +323,15 @@ const BuildingManagement = () => {
               {modals.building && (
                 <div className="space-y-6">
                   <div className="space-y-1">
-                    <h3 className="text-2xl font-black uppercase tracking-tighter">{selectedItem ? "Modify" : "Establish"} Building</h3>
-                    <p className="text-xs text-muted-foreground font-bold">Set the core identification for your property.</p>
+                    <h3 className="text-2xl font-black uppercase tracking-tighter">{selectedItem ? "সংশোধন" : "নতুন বিল্ডিং"} যুক্ত করুন</h3>
+                    <p className="text-xs text-muted-foreground font-bold">আপনার সম্পত্তির মূল পরিচয় সেট করুন।</p>
                   </div>
                   <form onSubmit={handleBuildingSubmit} className="space-y-5">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase text-primary ml-1">Official Building Name</label>
-                      <input name="name" defaultValue={selectedItem?.name} required placeholder="e.g. Sky Tower A" className="w-full h-14 px-5 rounded-2xl bg-secondary/40 border border-border outline-hidden focus:ring-2 focus:ring-primary/20 font-bold text-sm transition-all" />
+                      <label className="text-[10px] font-black uppercase text-primary ml-1">অফিসিয়াল বিল্ডিং নাম</label>
+                      <input name="name" defaultValue={selectedItem?.name} required placeholder="যেমন: স্কাই টাওয়ার এ" className="w-full h-14 px-5 rounded-2xl bg-secondary/40 border border-border outline-hidden focus:ring-2 focus:ring-primary/20 font-bold text-sm transition-all" />
                     </div>
-                    <Button type="submit" className="w-full h-14 bg-primary font-black rounded-2xl uppercase tracking-widest">Synchronize Data</Button>
+                    <Button type="submit" className="w-full h-14 bg-primary font-black rounded-2xl uppercase tracking-widest">তথ্য সংরক্ষণ করুন</Button>
                   </form>
                 </div>
               )}
@@ -339,22 +340,22 @@ const BuildingManagement = () => {
               {modals.flat && (
                 <div className="space-y-6">
                   <div className="space-y-1">
-                    <h3 className="text-2xl font-black uppercase tracking-tighter">{selectedItem ? "Refine" : "Allocate"} Flat</h3>
-                    <p className="text-xs text-muted-foreground font-bold">Assign units to their respective parent buildings.</p>
+                    <h3 className="text-2xl font-black uppercase tracking-tighter">{selectedItem ? "পরিমার্জন" : "নতুন ফ্লাট"} যুক্ত করুন</h3>
+                    <p className="text-xs text-muted-foreground font-bold">সংশ্লিষ্ট বিল্ডিং এ ইউনিট বরাদ্দ করুন।</p>
                   </div>
                   <form onSubmit={handleFlatSubmit} className="space-y-5">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase text-primary ml-1">Parent Asset</label>
+                      <label className="text-[10px] font-black uppercase text-primary ml-1">মূল সম্পদ</label>
                       <select name="buildingId" defaultValue={selectedItem?.buildingId || selectedBuildingId || ""} className="w-full h-14 px-5 rounded-2xl bg-secondary/40 border border-border outline-hidden focus:ring-2 focus:ring-primary/20 font-bold text-sm appearance-none">
-                        <option value="" disabled>Select Building</option>
+                        <option value="" disabled>বিল্ডিং নির্বাচন করুন</option>
                         {buildings.map((b) => <option key={b._id} value={b._id}>{b.name}</option>)}
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase text-primary ml-1">Unit Designation</label>
-                      <input name="name" defaultValue={selectedItem?.name} required placeholder="e.g. Suite 402" className="w-full h-14 px-5 rounded-2xl bg-secondary/40 border border-border outline-hidden focus:ring-2 focus:ring-primary/20 font-bold text-sm" />
+                      <label className="text-[10px] font-black uppercase text-primary ml-1">ইউনিট পদবী</label>
+                      <input name="name" defaultValue={selectedItem?.name} required placeholder="যেমন: স্যুট ৪০২" className="w-full h-14 px-5 rounded-2xl bg-secondary/40 border border-border outline-hidden focus:ring-2 focus:ring-primary/20 font-bold text-sm" />
                     </div>
-                    <Button type="submit" className="w-full h-14 bg-primary font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-primary/25">Confirm Allocation</Button>
+                    <Button type="submit" className="w-full h-14 bg-primary font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-primary/25">বরাদ্দ নিশ্চিত করুন</Button>
                   </form>
                 </div>
               )}
