@@ -19,6 +19,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/context/AuthContext";
 
 type Role = "admin" | "user";
 
@@ -49,6 +50,9 @@ const DashboardLayout = ({ role = "admin" }: { role?: Role }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const menuItems = menuConfig[role];
+
+  const { user, isAdmin, logout } = useAuth();
+console.log("nav",user?.name, user?.role);
 
   // রাউট অ্যাক্টিভ কিনা চেক করার লজিক
   const isActive = (href: string) => {

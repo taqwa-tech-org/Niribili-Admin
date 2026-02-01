@@ -2,13 +2,12 @@ import axios, {
   AxiosInstance,
   InternalAxiosRequestConfig,
   AxiosError,
-  AxiosResponse,
 } from "axios";
+import Cookies from "js-cookie";
 
 interface RefreshTokenResponse {
   data: {
     accessToken: string;
-    refreshToken: string;
   };
 }
 
@@ -16,7 +15,30 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
+// Cookie options
+const cookieOptions = {
+  expires: 7,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict" as const,
+};
+
 let axiosSecureInstance: AxiosInstance | null = null;
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: unknown) => void;
+  reject: (reason?: unknown) => void;
+}> = [];
+
+const processQueue = (error: Error | null, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
 
 const createAxiosSecure = (): AxiosInstance => {
   const axiosSecure = axios.create({
@@ -26,53 +48,77 @@ const createAxiosSecure = (): AxiosInstance => {
     },
   });
 
-  // REQUEST interceptor
+  // REQUEST interceptor - attach access token from cookie
   axiosSecure.interceptors.request.use((config) => {
-    const token = localStorage.getItem("accessToken");
+    const token = Cookies.get("accessToken");
     if (token) {
       config.headers.Authorization = `${token}`;
     }
     return config;
   });
 
-  // RESPONSE interceptor (your refresh logic stays same)
+  // RESPONSE interceptor - handle token refresh
   axiosSecure.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
       const originalRequest = error.config as CustomAxiosRequestConfig;
 
+      // If 401 and not already retrying
       if (error.response?.status === 401 && !originalRequest._retry) {
+        if (isRefreshing) {
+          // Queue requests while refreshing
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then((token) => {
+              originalRequest.headers!.Authorization = `${token}`;
+              return axiosSecure(originalRequest);
+            })
+            .catch((err) => Promise.reject(err));
+        }
+
         originalRequest._retry = true;
+        isRefreshing = true;
 
         try {
-          const refreshToken = localStorage.getItem("refreshToken");
+          const refreshToken = Cookies.get("refreshToken");
 
           if (!refreshToken) {
-            localStorage.clear();
-            window.location.href = "/login";
-            return Promise.reject(error);
+            throw new Error("No refresh token");
           }
 
           const res = await axios.post<RefreshTokenResponse>(
             "http://localhost:8080/api/v1/auth/refresh-token",
-            { refreshToken },
+            { refreshToken }
           );
 
-          localStorage.setItem("accessToken", res.data.data.accessToken);
-          localStorage.setItem("refreshToken", res.data.data.refreshToken);
+          const { accessToken } = res.data.data;
 
-          originalRequest.headers!.Authorization = `${res.data.data.accessToken}`;
+          // Store new access token in cookie (keep existing refresh token)
+          Cookies.set("accessToken", accessToken, cookieOptions);
+
+          // Update authorization header
+          originalRequest.headers!.Authorization = `${accessToken}`;
+
+          processQueue(null, accessToken);
 
           return axiosSecure(originalRequest);
         } catch (err) {
-          localStorage.clear();
-          window.location.href = "/login";
+          processQueue(err as Error, null);
+
+          // Clear cookies and redirect to login
+          Cookies.remove("accessToken");
+          Cookies.remove("refreshToken");
+          window.location.href = "/";
+
           return Promise.reject(err);
+        } finally {
+          isRefreshing = false;
         }
       }
 
       return Promise.reject(error);
-    },
+    }
   );
 
   return axiosSecure;

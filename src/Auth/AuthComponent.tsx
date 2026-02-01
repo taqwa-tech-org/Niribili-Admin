@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useAuth } from "@/context/AuthContext";
 
 const AuthComponent: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,6 +19,7 @@ const AuthComponent: React.FC = () => {
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   // 🔐 Login & Register Handler
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,11 +37,11 @@ const AuthComponent: React.FC = () => {
             password,
           },
         );
-        const token = res.data.data.accessToken;
-        if (isLogin) {
-          localStorage.setItem("accessToken", token);
-          // console.log(res.data.data.refreshToken)
-        }
+        
+        const { accessToken, refreshToken } = res.data.data;
+        
+        // ✅ Use AuthContext login (stores in cookies + fetches user)
+        await login(accessToken, refreshToken);
 
         // ✅ CONTEXT LOGIN
         toast.success("লগইন সফল হয়েছে 🎉");
@@ -54,9 +56,9 @@ const AuthComponent: React.FC = () => {
         });
 
         toast.success("রেজিস্ট্রেশন সফল হয়েছে 🎉");
-        navigate("/login");
+        setIsLogin(true); // Switch to login tab
       }
-    } catch (err) {
+    } catch (err: any) {
       const message = err.response?.data?.message || "কিছু একটা সমস্যা হয়েছে";
       setError(message);
       toast.error(message);
