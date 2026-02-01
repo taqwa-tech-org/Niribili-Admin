@@ -5,6 +5,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
+import Swal from "sweetalert2";
 
 const AuthComponent: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -43,8 +44,13 @@ const AuthComponent: React.FC = () => {
         // ✅ Use AuthContext login (stores in cookies + fetches user)
         await login(accessToken, refreshToken);
 
-        // ✅ CONTEXT LOGIN
-        toast.success("লগইন সফল হয়েছে 🎉");
+        Swal.fire({
+          position: "top-end",
+          icon: "success",
+          title: "login success",
+          showConfirmButton: false,
+          timer: 1200,
+        });
         navigate("/admin-dashboard");
       } else {
         // ✅ REGISTER
@@ -55,7 +61,13 @@ const AuthComponent: React.FC = () => {
           password,
         });
 
-        toast.success("রেজিস্ট্রেশন সফল হয়েছে 🎉");
+        Swal.fire({
+          position: "top-end",
+          icon: "success",
+          title: "Registration success",
+          showConfirmButton: false,
+          timer: 1200,
+        });
         setIsLogin(true); // Switch to login tab
       }
     } catch (err: any) {
