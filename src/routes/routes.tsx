@@ -33,20 +33,18 @@ const appRoutes = createBrowserRouter([
     ),
     children: [
       { index: true, element: <AdminDashboard /> },
-      { path: "/admin-dashboard/users-management", element: <UserManagement /> },
-      { path: "/admin-dashboard/building-management", element: <BuildingManagement /> },
-      { path: "/admin-dashboard/meals-control", element: <MealControl /> },
-      { path: "/admin-dashboard/lock-expired", element: <LockedMeals /> },
-      { path: "/admin-dashboard/bill-generator", element: <BillingGenerator /> },
-      { path: "/admin-dashboard/user", element: <AllUser /> },
-      { path: "/admin-dashboard/Profile", element: <AllProfile /> },
-      {path : "/admin-dashboard/userbalance" , element: <AllUserWalletBalance/>}
+      { path: "users-management", element: <UserManagement /> },
+      { path: "building-management", element: <BuildingManagement /> },
+      { path: "meals-control", element: <MealControl /> },
+      { path: "lock-expired", element: <LockExpired /> },
+      { path: "bill-generator", element: <BillingGenerator /> },
+      { path: "user", element: <AllUser /> },
+      { path: "Profile", element: <AllProfile /> },
+      { path: "userbalance", element: <AllUserWalletBalance /> },
+      { path: "locked-meals", element: <LockedMeals /> },
     ],
   },
-  {
-    path: "/meals/admin/locked-meals/:date",
-    element: <LockedMeals />,
-  },
+
   {
     path: "*",
     element: <NotFound />,
