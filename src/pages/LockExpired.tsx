@@ -2,8 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import useAxiosSecure from "@/AllHooks/useAxiosSecure";
 
+/* ================= TYPES ================= */
+
 interface Meal {
-  mealType: string;
+  mealType: "breakfast" | "lunch" | "dinner";
   quantity: number;
   price: number;
   date: string;
@@ -40,18 +42,19 @@ interface UserData {
   status: string;
 }
 
+/* ================= COMPONENT ================= */
+
 const LockExpired: React.FC = () => {
   const axiosSecure = useAxiosSecure();
+
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<LockResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
   const [usersData, setUsersData] = useState<Record<string, UserData>>({});
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  
-  console.log('locked', result);
-  
-
+  /* ========== LOCK EXPIRED ========== */
   const handleLock = async () => {
     setLoading(true);
     setError(null);
@@ -60,198 +63,181 @@ const LockExpired: React.FC = () => {
       if (res?.data?.success === true) {
         setResult(res.data?.data);
       }
-    } catch (err: unknown) {
-      let msg = "Request failed";
-      if (err && typeof err === "object") {
-        const e = err as any;
-        msg = e?.response?.data?.message || e?.message || msg;
-      }
-      setError(msg);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Request failed");
       setResult(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch user details when result changes
+  /* ========== FETCH USER DETAILS ========== */
   useEffect(() => {
     const fetchUserDetails = async () => {
       if (!result?.deductionResults?.length) return;
 
       setLoadingUsers(true);
-      const userIds = result.deductionResults.map((d) => d.userId);
-      const uniqueUserIds = [...new Set(userIds)];
 
-      const userDataMap: Record<string, UserData> = {};
+      const uniqueUserIds = [
+        ...new Set(result.deductionResults.map((d) => d.userId)),
+      ];
+
+      const userMap: Record<string, UserData> = {};
 
       await Promise.all(
-        uniqueUserIds.map(async (userId) => {
+        uniqueUserIds.map(async (id) => {
           try {
-            const res = await axiosSecure.get(`/user/${userId}`);
-            if (res?.data?.success && res?.data?.data) {
-              userDataMap[userId] = res.data.data;
+            const res = await axiosSecure.get(`/user/${id}`);
+            if (res?.data?.success) {
+              userMap[id] = res.data.data;
             }
           } catch (err) {
-            console.error(`Failed to fetch user ${userId}:`, err);
+            console.error("User fetch failed:", err);
           }
         })
       );
 
-      setUsersData(userDataMap);
+      setUsersData(userMap);
       setLoadingUsers(false);
     };
 
     fetchUserDetails();
   }, [result, axiosSecure]);
 
-  return (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Lock Expired Orders</h2>
+  /* ================= UI ================= */
 
-      <div className="flex gap-2 mb-4">
-        <Button onClick={handleLock} className="bg-primary" disabled={loading}>
-          {loading ? "Locking..." : "Lock Expired Orders"}
-        </Button>
-      </div>
+  return (
+    <div className="p-4 space-y-6">
+      <h2 className="text-2xl font-bold">Lock Expired Orders</h2>
+
+      <Button onClick={handleLock} disabled={loading}>
+        {loading ? "Locking..." : "Lock Expired Orders"}
+      </Button>
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
+        <div className="bg-red-100 text-red-700 p-3 rounded">{error}</div>
       )}
 
       {result && (
-        <div className="space-y-6">
-          {/* Summary Card */}
+        <>
+          {/* ===== SUMMARY ===== */}
           <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold mb-2">Summary</h3>
+            <h3 className="font-semibold mb-3">Summary</h3>
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white dark:bg-gray-700 p-3 rounded shadow">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Locked Orders</p>
+              <div className="bg-white dark:bg-gray-700 p-3 rounded">
+                <p className="text-sm text-gray-500">Locked Orders</p>
                 <p className="text-xl font-bold">{result.lockedCount}</p>
               </div>
-              <div className="bg-white dark:bg-gray-700 p-3 rounded shadow">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Total Deducted</p>
-                <p className="text-xl font-bold text-red-600">৳{result.summary.totalDeducted}</p>
-              </div>
-              <div className="bg-white dark:bg-gray-700 p-3 rounded shadow">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Success / Failed</p>
-                <p className="text-xl font-bold">
-                  <span className="text-green-600">{result.summary.successCount}</span> /{" "}
-                  <span className="text-red-600">{result.summary.failedCount}</span>
+
+              <div className="bg-white dark:bg-gray-700 p-3 rounded">
+                <p className="text-sm text-gray-500">Total Deducted</p>
+                <p className="text-xl font-bold text-red-600">
+                  ৳{result.summary.totalDeducted}
                 </p>
               </div>
-              <div className="bg-white dark:bg-gray-700 p-3 rounded shadow">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Total Users</p>
-                <p className="text-xl font-bold">{result.summary.totalUsers}</p>
+
+              <div className="bg-white dark:bg-gray-700 p-3 rounded">
+                <p className="text-sm text-gray-500">Success / Failed</p>
+                <p className="text-xl font-bold">
+                  <span className="text-green-600">
+                    {result.summary.successCount}
+                  </span>{" "}
+                  /{" "}
+                  <span className="text-red-600">
+                    {result.summary.failedCount}
+                  </span>
+                </p>
+              </div>
+
+              <div className="bg-white dark:bg-gray-700 p-3 rounded">
+                <p className="text-sm text-gray-500">Total Users</p>
+                <p className="text-xl font-bold">
+                  {result.summary.totalUsers}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Deduction Results Table */}
-          {result.deductionResults.length > 0 && (
-            <div className="overflow-x-auto">
-              <h3 className="text-lg font-semibold mb-2">Deduction Details</h3>
-              {loadingUsers && (
-                <p className="text-sm text-gray-500 mb-2">Loading user details...</p>
-              )}
-              <table className="min-w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      User Info
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Contact
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Total Cost
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Balance Before
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Balance After
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Meals
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {result.deductionResults.map((deduction, index) => {
-                    const user = usersData[deduction.userId];
-                    return (
-                      <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white">
-                              {user?.name || "Loading..."}
-                            </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {user?.email || "-"}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
-                          {user?.phone || "-"}
-                        </td>
-                        <td className="px-4 py-4 text-sm font-semibold text-red-600">
-                          ৳{deduction.totalMealCost}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
-                          ৳{deduction.balanceBefore}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
-                          ৳{deduction.balanceAfter}
-                        </td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              deduction.status === "success"
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                                : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                            }`}
-                          >
-                            {deduction.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="space-y-1">
-                            {deduction.meals.map((meal, mealIndex) => (
-                              <div
-                                key={mealIndex}
-                                className="text-xs bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded"
-                              >
-                                <span className="capitalize font-medium">{meal.mealType}</span>
-                                <span className="mx-1">×</span>
-                                <span>{meal.quantity}</span>
-                                <span className="mx-1">-</span>
-                                <span>৳{meal.price}</span>
-                                <span className="text-gray-500 dark:text-gray-400 ml-1">
-                                  ({meal.date})
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {/* ===== TABLE ===== */}
+          <div className="overflow-x-auto">
+            <h3 className="text-lg font-semibold mb-2">
+              Deduction Details (Next Day Meals)
+            </h3>
 
-          {result.deductionResults.length === 0 && (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              No deductions were made.
-            </div>
-          )}
-        </div>
+            {loadingUsers && (
+              <p className="text-sm text-gray-500">Loading user details...</p>
+            )}
+
+            <table className="min-w-full border rounded bg-white dark:bg-gray-800">
+              <thead className="bg-gray-100 dark:bg-gray-700 text-xs uppercase">
+                <tr>
+                  <th className="px-4 py-3 text-left">User</th>
+                  <th className="px-4 py-3 text-left">Contact</th>
+                  <th className="px-4 py-3 text-center">Breakfast</th>
+                  <th className="px-4 py-3 text-center">Lunch</th>
+                  <th className="px-4 py-3 text-center">Dinner</th>
+                  <th className="px-4 py-3 text-right">Status</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y">
+                {result.deductionResults.map((d, i) => {
+                  const user = usersData[d.userId];
+
+                  const breakfast =
+                    d.meals.find((m) => m.mealType === "breakfast")
+                      ?.quantity ?? "-";
+                  const lunch =
+                    d.meals.find((m) => m.mealType === "lunch")?.quantity ??
+                    "-";
+                  const dinner =
+                    d.meals.find((m) => m.mealType === "dinner")?.quantity ??
+                    "-";
+
+                  return (
+                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-4 py-3">
+                        <p className="font-medium">
+                          {user?.name || "Loading..."}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {user?.email}
+                        </p>
+                      </td>
+
+                      <td className="px-4 py-3 text-sm">
+                        {user?.phone || "-"}
+                      </td>
+
+                      <td className="px-4 py-3 text-center font-semibold">
+                        {breakfast}
+                      </td>
+                      <td className="px-4 py-3 text-center font-semibold">
+                        {lunch}
+                      </td>
+                      <td className="px-4 py-3 text-center font-semibold">
+                        {dinner}
+                      </td>
+
+                      <td className="px-4 py-3 text-right">
+                        <span
+                          className={`px-2 py-1 text-xs rounded-full ${
+                            d.status === "success"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {d.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
