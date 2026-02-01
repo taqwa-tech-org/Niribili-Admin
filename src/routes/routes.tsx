@@ -36,7 +36,7 @@ const appRoutes = createBrowserRouter([
       { path: "/admin-dashboard/users-management", element: <UserManagement /> },
       { path: "/admin-dashboard/building-management", element: <BuildingManagement /> },
       { path: "/admin-dashboard/meals-control", element: <MealControl /> },
-      { path: "/admin-dashboard/lock-expired", element: <LockedMeals /> },
+      { path: "/admin-dashboard/lock-expired", element: <LockExpired /> },
       { path: "/admin-dashboard/bill-generator", element: <BillingGenerator /> },
       { path: "/admin-dashboard/user", element: <AllUser /> },
       { path: "/admin-dashboard/Profile", element: <AllProfile /> },
