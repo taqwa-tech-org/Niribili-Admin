@@ -39,6 +39,7 @@ const menuConfig: Record<Role, MenuItem[]> = {
     { icon: FileText, label: "বিল জেনারেটর", href: "/admin-dashboard/bill-generator" },
     { icon: FileText, label: "সব ইউজার", href: "/admin-dashboard/user" },
     { icon: FileText, label: "সব প্রোফাইল", href: "/admin-dashboard/Profile" },
+    {icon: FileText, label: "ব্যালান্স আপডেট", href: "/admin-dashboard/userbalance"}
   ],
   user: [
     { icon: LayoutDashboard, label: "ড্যাশবোর্ড", href: "/user-dashboard" },
