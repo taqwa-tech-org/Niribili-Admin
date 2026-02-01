@@ -13,6 +13,7 @@ import NotFound from "@/pages/NotFound";
 import UserManagement from "@/pages/UserManagement";
 import { createBrowserRouter } from "react-router-dom";
 import BuildingManagement from "@/pages/BuildingManagement";
+import AllUserWalletBalance from "@/components/dashboard/AllUserWalletBalance";
 
 
 const appRoutes = createBrowserRouter([
@@ -39,6 +40,7 @@ const appRoutes = createBrowserRouter([
       { path: "/admin-dashboard/bill-generator", element: <BillingGenerator /> },
       { path: "/admin-dashboard/user", element: <AllUser /> },
       { path: "/admin-dashboard/Profile", element: <AllProfile /> },
+      {path : "/admin-dashboard/userbalance" , element: <AllUserWalletBalance/>}
     ],
   },
   {
