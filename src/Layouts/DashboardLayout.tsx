@@ -35,7 +35,7 @@ const menuConfig: Record<Role, MenuItem[]> = {
     { icon: Users, label: "ইউজার ম্যানেজমেন্ট", href: "/admin-dashboard/users-management" },
     { icon: Users, label: "বিল্ডিং ম্যানেজমেন্ট", href: "/admin-dashboard/building-management" },
     { icon: UtensilsCrossed, label: "মিল কন্ট্রোল", href: "/admin-dashboard/meals-control" },
-    { icon: UtensilsCrossed, label: "লক করা মিল", href: "/admin-dashboard/lock-expired" },
+    { icon: UtensilsCrossed, label: "লক করা মিল", href: "/admin-dashboard/locked-meals" },
     { icon: FileText, label: "বিল জেনারেটর", href: "/admin-dashboard/bill-generator" },
     { icon: FileText, label: "সব ইউজার", href: "/admin-dashboard/user" },
     { icon: FileText, label: "সব প্রোফাইল", href: "/admin-dashboard/Profile" },
@@ -53,8 +53,8 @@ const DashboardLayout = ({ role = "admin" }: { role?: Role }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const menuItems = menuConfig[role];
-  const { user, isAdmin, logout } = useAuth();
-// console.log("nav",user?.name, user?.role);
+  const {logout } = useAuth();
+
 
   // রাউট অ্যাক্টিভ কিনা চেক করার লজিক
   const isActive = (href: string) => {

@@ -45,7 +45,7 @@ const BillingGenerator: React.FC = () => {
   const totalQuantity = summary.reduce((sum, s) => sum + (s.totalQuantity || 0), 0);
   const totalPrice = summary.reduce((sum, s) => sum + (s.totalPrice || 0), 0);
 
-  console.log(date);
+
 
   const fetchSummary = useCallback(async (d: string) => {
     try {

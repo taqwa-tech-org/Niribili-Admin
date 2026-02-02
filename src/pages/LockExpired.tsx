@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import useAxiosSecure from "@/AllHooks/useAxiosSecure";
+import { Lock } from "lucide-react";
 
 /* ================= TYPES ================= */
 
@@ -42,202 +44,83 @@ interface UserData {
   status: string;
 }
 
-/* ================= COMPONENT ================= */
-
 const LockExpired: React.FC = () => {
   const axiosSecure = useAxiosSecure();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<LockResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const [usersData, setUsersData] = useState<Record<string, UserData>>({});
-  const [loadingUsers, setLoadingUsers] = useState(false);
-
-  /* ========== LOCK EXPIRED ========== */
+  
   const handleLock = async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await axiosSecure.post("/meals/admin/lock-expired");
       if (res?.data?.success === true) {
-        setResult(res.data?.data);
+        const data = res.data.data;
+        // Check if there are locked orders and deduction results
+        if (data?.lockedCount > 0 || data?.deductionResults?.length > 0) {
+          // Navigate to locked-meals page after 2 second delay
+          setTimeout(() => {
+            navigate("/admin-dashboard/locked-meals");
+          }, 2000);
+        } else {
+          setError("কোনো এক্সপায়ার্ড অর্ডার পাওয়া যায়নি (No expired orders found to lock)");
+          setLoading(false);
+        }
       }
     } catch (err: any) {
       setError(err?.response?.data?.message || "Request failed");
-      setResult(null);
-    } finally {
       setLoading(false);
     }
   };
 
-  /* ========== FETCH USER DETAILS ========== */
-  useEffect(() => {
-    const fetchUserDetails = async () => {
-      if (!result?.deductionResults?.length) return;
-
-      setLoadingUsers(true);
-
-      const uniqueUserIds = [
-        ...new Set(result.deductionResults.map((d) => d.userId)),
-      ];
-
-      const userMap: Record<string, UserData> = {};
-
-      await Promise.all(
-        uniqueUserIds.map(async (id) => {
-          try {
-            const res = await axiosSecure.get(`/user/${id}`);
-            if (res?.data?.success) {
-              userMap[id] = res.data.data;
-            }
-          } catch (err) {
-            console.error("User fetch failed:", err);
-          }
-        })
-      );
-
-      setUsersData(userMap);
-      setLoadingUsers(false);
-    };
-
-    fetchUserDetails();
-  }, [result, axiosSecure]);
-
   /* ================= UI ================= */
 
   return (
-    <div className="p-4 space-y-6">
-      <h2 className="text-2xl font-bold">Lock Expired Orders</h2>
+    <div className="container mx-auto p-4 md:p-6 space-y-6">
+      {/* Header */}
+      <div className="bg-card rounded-lg shadow-sm border p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold mb-1">🔒 লক এক্সপায়ার্ড অর্ডার</h1>
+            <p className="text-sm text-muted-foreground">Lock Expired Orders & Deduct Balance</p>
+          </div>
+          
+          <Button onClick={handleLock} disabled={loading} variant="destructive" size="lg">
+            <Lock className="w-5 h-5 mr-2" />
+            {loading ? "Locking..." : "Lock Expired Orders"}
+          </Button>
+        </div>
+      </div>
 
-      <Button onClick={handleLock} disabled={loading}>
-        {loading ? "Locking..." : "Lock Expired Orders"}
-      </Button>
-
-      {error && (
-        <div className="bg-red-100 text-red-700 p-3 rounded">{error}</div>
+      {/* Loading State */}
+      {loading && (
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mb-4"></div>
+          <p className="text-lg font-medium text-muted-foreground">লক করা হচ্ছে...</p>
+          <p className="text-sm text-muted-foreground">Processing orders, please wait...</p>
+        </div>
       )}
 
-      {result && (
-        <>
-          {/* ===== SUMMARY ===== */}
-          <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-            <h3 className="font-semibold mb-3">Summary</h3>
+      {/* Error State */}
+      {error && !loading && (
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-4">
+          <p className="font-semibold">Error</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white dark:bg-gray-700 p-3 rounded">
-                <p className="text-sm text-gray-500">Locked Orders</p>
-                <p className="text-xl font-bold">{result.lockedCount}</p>
-              </div>
-
-              <div className="bg-white dark:bg-gray-700 p-3 rounded">
-                <p className="text-sm text-gray-500">Total Deducted</p>
-                <p className="text-xl font-bold text-red-600">
-                  ৳{result.summary.totalDeducted}
-                </p>
-              </div>
-
-              <div className="bg-white dark:bg-gray-700 p-3 rounded">
-                <p className="text-sm text-gray-500">Success / Failed</p>
-                <p className="text-xl font-bold">
-                  <span className="text-green-600">
-                    {result.summary.successCount}
-                  </span>{" "}
-                  /{" "}
-                  <span className="text-red-600">
-                    {result.summary.failedCount}
-                  </span>
-                </p>
-              </div>
-
-              <div className="bg-white dark:bg-gray-700 p-3 rounded">
-                <p className="text-sm text-gray-500">Total Users</p>
-                <p className="text-xl font-bold">
-                  {result.summary.totalUsers}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ===== TABLE ===== */}
-          <div className="overflow-x-auto">
-            <h3 className="text-lg font-semibold mb-2">
-              Deduction Details (Next Day Meals)
-            </h3>
-
-            {loadingUsers && (
-              <p className="text-sm text-gray-500">Loading user details...</p>
-            )}
-
-            <table className="min-w-full border rounded bg-white dark:bg-gray-800">
-              <thead className="bg-gray-100 dark:bg-gray-700 text-xs uppercase">
-                <tr>
-                  <th className="px-4 py-3 text-left">User</th>
-                  <th className="px-4 py-3 text-left">Contact</th>
-                  <th className="px-4 py-3 text-center">Breakfast</th>
-                  <th className="px-4 py-3 text-center">Lunch</th>
-                  <th className="px-4 py-3 text-center">Dinner</th>
-                  <th className="px-4 py-3 text-right">Status</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y">
-                {result.deductionResults.map((d, i) => {
-                  const user = usersData[d.userId];
-
-                  const breakfast =
-                    d.meals.find((m) => m.mealType === "breakfast")
-                      ?.quantity ?? "-";
-                  const lunch =
-                    d.meals.find((m) => m.mealType === "lunch")?.quantity ??
-                    "-";
-                  const dinner =
-                    d.meals.find((m) => m.mealType === "dinner")?.quantity ??
-                    "-";
-
-                  return (
-                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-4 py-3">
-                        <p className="font-medium">
-                          {user?.name || "Loading..."}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {user?.email}
-                        </p>
-                      </td>
-
-                      <td className="px-4 py-3 text-sm">
-                        {user?.phone || "-"}
-                      </td>
-
-                      <td className="px-4 py-3 text-center font-semibold">
-                        {breakfast}
-                      </td>
-                      <td className="px-4 py-3 text-center font-semibold">
-                        {lunch}
-                      </td>
-                      <td className="px-4 py-3 text-center font-semibold">
-                        {dinner}
-                      </td>
-
-                      <td className="px-4 py-3 text-right">
-                        <span
-                          className={`px-2 py-1 text-xs rounded-full ${
-                            d.status === "success"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {d.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
+      {/* Info Card */}
+      {!loading && !error && (
+        <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-lg p-6">
+          <h3 className="font-semibold text-lg mb-2">📋 তথ্য</h3>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li>• এই বাটনে ক্লিক করলে সকল এক্সপায়ার্ড অর্ডার লক হয়ে যাবে</li>
+            <li>• ইউজারদের ওয়ালেট থেকে মিলের টাকা কেটে নেওয়া হবে</li>
+            <li>• লক হওয়ার পর আপনাকে লক করা মিলের পেজে নিয়ে যাওয়া হবে</li>
+          </ul>
+        </div>
       )}
     </div>
   );

@@ -14,7 +14,7 @@ import useAxiosSecure from "@/AllHooks/useAxiosSecure";
 interface MealOrder {
   _id: string;
   userId: { _id: string; name: string; phone?: string; email?: string };
-  buildingId: string;
+  buildingId: { _id: string; name: string } | string;
   flatId: { _id: string; name: string } | string;
   mealDate: string;
   mealType: string;
@@ -29,6 +29,7 @@ interface GroupedMealData {
   userId: string;
   userName: string;
   userEmail?: string;
+  buildingName: string;
   flatName: string;
   breakfast: number;
   lunch: number;
@@ -53,6 +54,9 @@ const MealControl: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mealCount, setMealCount] = useState([]);
+
+
+  
 
   useEffect(() => {
     const fetchOrders = async (d: string) => {
@@ -104,6 +108,7 @@ const MealControl: React.FC = () => {
           userId: userId,
           userName: order.userId.name,
           userEmail: order.userId.email,
+          buildingName: typeof order.buildingId === "string" ? order.buildingId : order.buildingId?.name || "",
           flatName: typeof order.flatId === "string" ? order.flatId : order.flatId?.name || "",
           breakfast: 0,
           lunch: 0,
@@ -131,6 +136,7 @@ const MealControl: React.FC = () => {
     const searchLower = searchTerm.toLowerCase();
     return (
       meal.userName.toLowerCase().includes(searchLower) ||
+      meal.buildingName.toLowerCase().includes(searchLower) ||
       meal.flatName.toLowerCase().includes(searchLower) ||
       (meal.userEmail && meal.userEmail.toLowerCase().includes(searchLower))
     );
@@ -150,14 +156,8 @@ const MealControl: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="gap-2">
-            <CalendarIcon className="w-4 h-4" /> তারিখ পরিবর্তন
-          </Button>
           <Button variant="outline" className="gap-2" asChild>
             <Link to="/admin-dashboard/lock-expired">Lock Expired</Link>
-          </Button>
-          <Button className="gap-2 shadow-glow bg-primary">
-            <Save className="w-4 h-4" /> সব সেভ করুন
           </Button>
         </div>
       </div>
@@ -204,6 +204,7 @@ const MealControl: React.FC = () => {
             <thead className="bg-muted/50 text-muted-foreground uppercase text-[11px] font-bold tracking-wider">
               <tr>
                 <th className="px-6 py-4">ইউজার</th>
+                <th className="px-6 py-4 text-center">বিল্ডিং</th>
                 <th className="px-6 py-4 text-center">ফ্ল্যাট</th>
                 <th className="px-6 py-4 text-center">সকালের নাস্তা</th>
                 <th className="px-6 py-4 text-center">দুপুরের খাবার</th>
@@ -214,21 +215,21 @@ const MealControl: React.FC = () => {
             <tbody className="divide-y divide-border/40">
               {loading && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-6 text-center">
+                  <td colSpan={7} className="px-6 py-6 text-center">
                     লোড হচ্ছে...
                   </td>
                 </tr>
               )}
               {error && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-6 text-center text-destructive">
+                  <td colSpan={7} className="px-6 py-6 text-center text-destructive">
                     {error}
                   </td>
                 </tr>
               )}
               {!loading && !error && filteredMeals.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-6 text-center">
+                  <td colSpan={7} className="px-6 py-6 text-center">
                     No orders for {date}
                   </td>
                 </tr>
@@ -250,6 +251,7 @@ const MealControl: React.FC = () => {
                       </span>
                     </div>
                   </td>
+                  <td className="px-6 py-4 text-center">{meal.buildingName}</td>
                   <td className="px-6 py-4 text-center">{meal.flatName}</td>
                   <td className="px-6 py-4 text-center">
                     {meal.breakfast > 0 ? (
