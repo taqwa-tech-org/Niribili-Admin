@@ -14,7 +14,7 @@ import {
 import Swal from "sweetalert2";
 
 interface ProfileItem {
-  _id: string; // ✅ PROFILE ID (important)
+  _id: string;
   userId: any;
   profilePhoto?: string | null;
   nidPhoto?: string | null;
@@ -45,7 +45,6 @@ const AllProfile: React.FC = () => {
     useState<ProfileItem | null>(null);
   const [updating, setUpdating] = useState(false);
 
-  /* ================= FETCH ================= */
   const fetchProfiles = async () => {
     try {
       setLoading(true);
@@ -62,7 +61,6 @@ const AllProfile: React.FC = () => {
     fetchProfiles();
   }, []);
 
-  /* ================= FILTER ================= */
   const filteredProfiles = profiles
     .filter((p) => {
       if (tab === "deleted") return p.isDeleted === true;
@@ -81,11 +79,10 @@ const AllProfile: React.FC = () => {
       );
     });
 
-  /* ================= APPROVE HANDLER ================= */
   const handleApproveUser = async () => {
     if (!selectedProfile) return;
 
-    const profileId = selectedProfile._id; // ✅ CORRECT ID
+    const profileId = selectedProfile._id;
 
     try {
       setUpdating(true);
@@ -117,7 +114,6 @@ const AllProfile: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* ================= HEADER ================= */}
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-extrabold">Resident Profiles</h2>
 
@@ -129,7 +125,6 @@ const AllProfile: React.FC = () => {
         />
       </div>
 
-      {/* ================= TABS ================= */}
       <div className="flex gap-2">
         {["pending", "process", "approve", "deleted"].map((t) => (
           <button
@@ -146,7 +141,6 @@ const AllProfile: React.FC = () => {
         ))}
       </div>
 
-      {/* ================= TABLE ================= */}
       <div className="border rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-muted">
@@ -204,27 +198,56 @@ const AllProfile: React.FC = () => {
               <X />
             </button>
 
-            {/* Header */}
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold">Profile Details</h3>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 mr-7">
                 <span className="font-bold capitalize">
                   Status: {selectedProfile.accountStatus}
                 </span>
 
                 {selectedProfile.accountStatus === "process" && (
-                  <Button
-                    disabled={updating}
-                    onClick={handleApproveUser}
-                  >
+                  <Button disabled={updating} onClick={handleApproveUser}>
                     Approve
                   </Button>
                 )}
               </div>
             </div>
 
-            {/* Info */}
+            {/* ===== Images Section (ONLY ADDITION) ===== */}
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Profile Photo
+                </p>
+                {selectedProfile.profilePhoto ? (
+                  <img
+                    src={selectedProfile.profilePhoto}
+                    alt="Profile"
+                    className="w-full h-56 object-cover rounded-xl border"
+                  />
+                ) : (
+                  <p className="text-sm">No image</p>
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  NID Photo
+                </p>
+                {selectedProfile.nidPhoto ? (
+                  <img
+                    src={selectedProfile.nidPhoto}
+                    alt="NID"
+                    className="w-full h-56 object-cover rounded-xl border"
+                  />
+                ) : (
+                  <p className="text-sm">No image</p>
+                )}
+              </div>
+            </div>
+
+            {/* ===== Info Section (UNCHANGED) ===== */}
             <div className="grid grid-cols-2 gap-6">
               <DataField label="Name" value={selectedProfile.userId?.name} />
               <DataField label="Email" value={selectedProfile.userId?.email} />
@@ -233,7 +256,10 @@ const AllProfile: React.FC = () => {
                 label="Guardian"
                 value={selectedProfile.guardianName}
               />
-              <DataField label="Building" value={selectedProfile.buildingId?.name} />
+              <DataField
+                label="Building"
+                value={selectedProfile.buildingId?.name}
+              />
               <DataField
                 label="Flat / Room"
                 value={`${selectedProfile.flatId?.name} / ${selectedProfile.room}`}
@@ -246,7 +272,6 @@ const AllProfile: React.FC = () => {
   );
 };
 
-/* ================= HELPER ================= */
 const DataField = ({
   label,
   value,
