@@ -11,23 +11,21 @@ import {
   CreditCard,
   Info,
 } from "lucide-react";
-
-/* ================= Types ================= */
+import Swal from "sweetalert2";
 
 interface ProfileItem {
-  _id: string;
+  _id: string; // ✅ PROFILE ID (important)
   userId: any;
   profilePhoto?: string | null;
   nidPhoto?: string | null;
   guardianName?: string | null;
   guardianPhone?: string | null;
   guardianRelation?: string | null;
-  emergencyContact?: string | null;
+  whatsappNumber?: string | null;
+  accountStatus?: string | null;
   buildingId?: any;
   flatId?: any;
   room?: string | null;
-  whatsappNumber?: string | null;
-  accountStatus?: string | null;
   bio?: string | null;
   role?: string | null;
   isDeleted?: boolean;
@@ -35,77 +33,26 @@ interface ProfileItem {
   updatedAt?: string;
 }
 
-/* ================= Status Helper ================= */
-
-const getStatus = (profile: ProfileItem) => {
-  if (profile.isDeleted) {
-    return {
-      key: "deleted",
-      label: "ডিলিটেড",
-      className: "bg-red-500/10 text-red-600 border-red-500/20",
-    };
-  }
-
-  switch ((profile.accountStatus || "").toLowerCase()) {
-    case "pending":
-      return {
-        key: "pending",
-        label: "পেন্ডিং",
-        className: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
-      };
-
-    case "process":
-      return {
-        key: "process",
-        label: "প্রসেসিং",
-        className: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-      };
-
-    case "approve":
-    case "approved":
-      return {
-        key: "approve",
-        label: "অনুমোদিত",
-        className:
-          "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-      };
-
-    default:
-      return {
-        key: "unknown",
-        label: "অজানা",
-        className: "bg-muted text-muted-foreground border-border",
-      };
-  }
-};
-
-/* ================= Component ================= */
-
 const AllProfile: React.FC = () => {
   const axiosSecure = useAxiosSecure();
+
   const [profiles, setProfiles] = useState<ProfileItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<
-    "pending" | "process" | "approve" | "deleted"
-  >("pending");
+  const [tab, setTab] =
+    useState<"pending" | "process" | "approve" | "deleted">("pending");
   const [search, setSearch] = useState("");
   const [selectedProfile, setSelectedProfile] =
     useState<ProfileItem | null>(null);
+  const [updating, setUpdating] = useState(false);
 
+  /* ================= FETCH ================= */
   const fetchProfiles = async () => {
     try {
       setLoading(true);
-      setError(null);
       const res = await axiosSecure.get("/profile");
       setProfiles(res.data?.data || []);
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "ডাটা লোড করা যায়নি",
-      );
-      setProfiles([]);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -115,137 +62,141 @@ const AllProfile: React.FC = () => {
     fetchProfiles();
   }, []);
 
-  const filtered = profiles
-    .filter((p) => getStatus(p).key === tab)
+  /* ================= FILTER ================= */
+  const filteredProfiles = profiles
     .filter((p) => {
-      const q = search.trim().toLowerCase();
-      if (!q) return true;
-      const name =
-        typeof p.userId === "object" ? p.userId?.name : p.userId;
+      if (tab === "deleted") return p.isDeleted === true;
+
+      const status = (p.accountStatus || "").toLowerCase();
+      if (tab === "approve") return status === "approve";
+      return status === tab && !p.isDeleted;
+    })
+    .filter((p) => {
+      if (!search) return true;
+      const name = p.userId?.name?.toLowerCase() || "";
+      const phone = p.whatsappNumber || "";
       return (
-        (name || "").toLowerCase().includes(q) ||
-        (p.guardianName || "").toLowerCase().includes(q) ||
-        (p.whatsappNumber || "").toLowerCase().includes(q)
+        name.includes(search.toLowerCase()) ||
+        phone.includes(search.toLowerCase())
       );
     });
 
+  /* ================= APPROVE HANDLER ================= */
+  const handleApproveUser = async () => {
+    if (!selectedProfile) return;
+
+    const profileId = selectedProfile._id; // ✅ CORRECT ID
+
+    try {
+      setUpdating(true);
+
+      await axiosSecure.patch(`/profile/${profileId}/status`, {
+        accountStatus: "approve",
+      });
+
+      Swal.fire({
+        icon: "success",
+        title: "Approved",
+        text: "User approved successfully",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+
+      setSelectedProfile(null);
+      fetchProfiles();
+    } catch (err: any) {
+      Swal.fire(
+        "Error",
+        err?.response?.data?.message || "Failed to approve",
+        "error"
+      );
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
-      {/* ================= Header ================= */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-6 rounded-2xl border shadow-sm">
-        <div>
-          <h2 className="text-3xl font-extrabold">
-            সব প্রোফাইলসমূহ
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            সকল ব্যবহারকারীর প্রোফাইল যাচাই ও ব্যবস্থাপনা
-          </p>
-        </div>
+      {/* ================= HEADER ================= */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-extrabold">Resident Profiles</h2>
 
-        <div className="flex gap-3">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="নাম বা ফোন খুঁজুন..."
-            className="bg-secondary/40 border rounded-xl px-4 py-2 text-sm w-64"
-          />
-          <Button onClick={fetchProfiles}>রিফ্রেশ</Button>
-        </div>
+        <input
+          className="px-4 py-2 border rounded-xl"
+          placeholder="Search name / phone"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
-      {/* ================= Tabs ================= */}
-      <div className="flex gap-2 p-1 bg-muted/50 rounded-2xl w-fit border">
-        {[
-          { key: "pending", label: "পেন্ডিং" },
-          { key: "process", label: "প্রসেসিং" },
-          { key: "approve", label: "অনুমোদিত" },
-          { key: "deleted", label: "ডিলিটেড" },
-        ].map((t) => (
+      {/* ================= TABS ================= */}
+      <div className="flex gap-2">
+        {["pending", "process", "approve", "deleted"].map((t) => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key as any)}
-            className={`px-6 py-2 rounded-xl text-sm font-bold ${
-              tab === t.key
-                ? "bg-card shadow text-primary"
-                : "text-muted-foreground"
+            key={t}
+            onClick={() => setTab(t as any)}
+            className={`px-4 py-2 rounded-xl font-bold capitalize ${
+              tab === t
+                ? "bg-primary text-white"
+                : "bg-muted text-foreground"
             }`}
           >
-            {t.label}
+            {t}
           </button>
         ))}
       </div>
 
-      {/* ================= Table ================= */}
-      <div className="rounded-2xl border overflow-hidden">
+      {/* ================= TABLE ================= */}
+      <div className="border rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-xs uppercase">
+          <thead className="bg-muted">
             <tr>
-              <th className="px-6 py-4">নাম</th>
-              <th className="px-6 py-4">রোল</th>
-              <th className="px-6 py-4">অভিভাবক</th>
-              <th className="px-6 py-4">যোগাযোগ</th>
-              <th className="px-6 py-4">স্ট্যাটাস</th>
-              <th className="px-6 py-4 text-right">অ্যাকশন</th>
+              <th className="p-4 text-left">User</th>
+              <th className="p-4">Role</th>
+              <th className="p-4">Contact</th>
+              <th className="p-4">Status</th>
+              <th className="p-4 text-right">Action</th>
             </tr>
           </thead>
 
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="text-center py-10">
-                  লোড হচ্ছে...
+                <td colSpan={5} className="p-6 text-center">
+                  Loading...
                 </td>
               </tr>
-            ) : filtered.length === 0 ? (
+            ) : filteredProfiles.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-10">
-                  কোনো তথ্য পাওয়া যায়নি
+                <td colSpan={5} className="p-6 text-center">
+                  No data found
                 </td>
               </tr>
             ) : (
-              filtered.map((p) => {
-                const status = getStatus(p);
-                return (
-                  <tr key={p._id} className="border-t">
-                    <td className="px-6 py-4 font-bold">
-                      {p.userId?.name || "Unknown"}
-                    </td>
-                    <td className="px-6 py-4">
-                      {p.role || p.userId?.role || "-"}
-                    </td>
-                    <td className="px-6 py-4">
-                      {p.guardianName || "-"}
-                    </td>
-                    <td className="px-6 py-4">
-                      {p.whatsappNumber || p.userId?.phone || "-"}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold border ${status.className}`}
-                      >
-                        {status.label}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Button
-                        size="sm"
-                        onClick={() => setSelectedProfile(p)}
-                      >
-                        বিস্তারিত
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })
+              filteredProfiles.map((p) => (
+                <tr key={p._id} className="border-t">
+                  <td className="p-4 font-bold">{p.userId?.name}</td>
+                  <td className="p-4 capitalize">{p.role}</td>
+                  <td className="p-4">{p.whatsappNumber}</td>
+                  <td className="p-4 font-bold capitalize">
+                    {p.isDeleted ? "deleted" : p.accountStatus}
+                  </td>
+                  <td className="p-4 text-right">
+                    <Button onClick={() => setSelectedProfile(p)}>
+                      View Details
+                    </Button>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
       </div>
 
-      {/* ================= Modal ================= */}
+      {/* ================= MODAL ================= */}
       {selectedProfile && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <div className="bg-card max-w-4xl w-full rounded-2xl p-6 relative">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+          <div className="bg-white w-full max-w-4xl rounded-2xl p-6 relative">
             <button
               onClick={() => setSelectedProfile(null)}
               className="absolute right-4 top-4"
@@ -253,38 +204,39 @@ const AllProfile: React.FC = () => {
               <X />
             </button>
 
-            <h3 className="text-xl font-bold mb-6">
-              প্রোফাইল বিস্তারিত তথ্য
-            </h3>
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">Profile Details</h3>
 
-            <div className="grid md:grid-cols-2 gap-6">
+              <div className="flex items-center gap-3">
+                <span className="font-bold capitalize">
+                  Status: {selectedProfile.accountStatus}
+                </span>
+
+                {selectedProfile.accountStatus === "process" && (
+                  <Button
+                    disabled={updating}
+                    onClick={handleApproveUser}
+                  >
+                    Approve
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="grid grid-cols-2 gap-6">
+              <DataField label="Name" value={selectedProfile.userId?.name} />
+              <DataField label="Email" value={selectedProfile.userId?.email} />
+              <DataField label="Phone" value={selectedProfile.userId?.phone} />
               <DataField
-                label="নাম"
-                value={selectedProfile.userId?.name}
-                icon={<User size={12} />}
+                label="Guardian"
+                value={selectedProfile.guardianName}
               />
+              <DataField label="Building" value={selectedProfile.buildingId?.name} />
               <DataField
-                label="ইমেইল"
-                value={selectedProfile.userId?.email}
-                icon={<Mail size={12} />}
-              />
-              <DataField
-                label="ফোন"
-                value={selectedProfile.userId?.phone}
-                icon={<Phone size={12} />}
-              />
-              <DataField
-                label="হোয়াটসঅ্যাপ"
-                value={selectedProfile.whatsappNumber}
-              />
-              <DataField
-                label="অভিভাবক"
-                value={`${selectedProfile.guardianName || "-"} (${selectedProfile.guardianRelation || "N/A"})`}
-              />
-              <DataField
-                label="অ্যাকাউন্ট স্ট্যাটাস"
-                value={getStatus(selectedProfile).label}
-                highlight
+                label="Flat / Room"
+                value={`${selectedProfile.flatId?.name} / ${selectedProfile.room}`}
               />
             </div>
           </div>
@@ -294,30 +246,17 @@ const AllProfile: React.FC = () => {
   );
 };
 
-/* ================= UI Helpers ================= */
-
+/* ================= HELPER ================= */
 const DataField = ({
   label,
   value,
-  icon,
-  highlight,
 }: {
   label: string;
   value?: string | null;
-  icon?: any;
-  highlight?: boolean;
 }) => (
   <div>
-    <p className="text-xs text-muted-foreground flex items-center gap-1">
-      {icon} {label}
-    </p>
-    <p
-      className={`font-bold ${
-        highlight ? "text-primary" : ""
-      }`}
-    >
-      {value || "—"}
-    </p>
+    <p className="text-xs text-muted-foreground">{label}</p>
+    <p className="font-bold">{value || "-"}</p>
   </div>
 );
 
