@@ -81,14 +81,14 @@ const BillingGenerator: React.FC = () => {
           </h1>
           <p className="text-muted-foreground mt-1">সব ইউজারদের জন্য মাসিক বিল ক্যালকুলেট এবং পাবলিশ করুন।</p>
         </div>
-        <Button className="bg-primary shadow-glow gap-2 h-12 px-6">
+        {/* <Button className="bg-primary shadow-glow gap-2 h-12 px-6">
           <RefreshCcw className="w-4 h-4" /> ডাটা রিফ্রেশ করুন
-        </Button>
+        </Button> */}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-1 ">
         {/* Left: Configuration Form */}
-        <div className="lg:col-span-1 space-y-6">
+        {/* <div className="lg:col-span-1 space-y-6">
           <div className="glass p-6 rounded-2xl border border-border/50 bg-linear-to-b from-card to-background">
             <h3 className="font-bold flex items-center gap-2 mb-6 text-primary">
               <Settings2 className="w-4 h-4" /> প্যারামিটার সেট করুন
@@ -145,7 +145,7 @@ const BillingGenerator: React.FC = () => {
               <strong>সতর্কতা:</strong> বিল একবার জেনারেট হয়ে গেলে ইউজারের পোর্টালে নোটিফিকেশন চলে যাবে। দয়া করে ডেটা চেক করে নিন।
             </p>
           </div>
-        </div>
+        </div> */}
 
         {/* Right: Preview Table */}
         <div className="lg:col-span-2 space-y-6">
@@ -162,12 +162,12 @@ const BillingGenerator: React.FC = () => {
                 <Button variant="outline" size="sm" className="h-9" onClick={() => fetchSummary(date)}>
                   <RefreshCcw className="w-3.5 h-3.5 mr-2" /> রিফ্রেশ
                 </Button>
-                <Button variant="outline" size="sm" className="h-9">
+                {/* <Button variant="outline" size="sm" className="h-9">
                   <Download className="w-3.5 h-3.5 mr-2" /> CSV
-                </Button>
-                <Button size="sm" className="h-9 bg-primary shadow-glow">
+                </Button> */}
+                {/* <Button size="sm" className="h-9 bg-primary shadow-glow">
                   <Send className="w-3.5 h-3.5 mr-2" /> পাবলিশ অল
-                </Button>
+                </Button> */}
               </div>
             </div>
 
