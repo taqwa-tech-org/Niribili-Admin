@@ -35,6 +35,7 @@ const menuConfig: Record<Role, MenuItem[]> = {
     { icon: Users, label: "ইউজার ম্যানেজমেন্ট", href: "/admin-dashboard/users-management" },
     { icon: Users, label: "বিল্ডিং ম্যানেজমেন্ট", href: "/admin-dashboard/building-management" },
     { icon: UtensilsCrossed, label: "মিল কন্ট্রোল", href: "/admin-dashboard/meals-control" },
+    { icon: UtensilsCrossed, label: "লক করা মিল", href: "/meals/admin/locked-meals/2026-02-02" },
     { icon: FileText, label: "বিল জেনারেটর", href: "/admin-dashboard/bill-generator" },
     { icon: FileText, label: "সব ইউজার", href: "/admin-dashboard/user" },
     { icon: FileText, label: "সব প্রোফাইল", href: "/admin-dashboard/Profile" },
