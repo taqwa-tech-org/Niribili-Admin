@@ -94,7 +94,7 @@ const createAxiosSecure = (): AxiosInstance => {
 
           const { accessToken } = res.data.data;
 
-          // Store new access token in cookie (keep existing refresh token)
+          // Store new access token in cookie
           Cookies.set("accessToken", accessToken, cookieOptions);
 
           // Update authorization header

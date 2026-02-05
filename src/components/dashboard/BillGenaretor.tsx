@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { 
   FileText, 
@@ -20,37 +20,56 @@ interface BillingInput {
   utilityCharge: number;
 }
 
+const getCurrentDate = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 const BillingGenerator: React.FC = () => {
   const [config, setConfig] = useState<BillingInput>({
-    month: "জানুয়ারি ২০২৬",
+    month: getCurrentDate(),
     mealRate: 0,
     fixedCharge: 3000,
     utilityCharge: 500,
   });
 
   const axiosSecure = useAxiosSecure();
-  const [date, setDate] = useState<string>("2026-01-27");
+  const [date, setDate] = useState<string>(getCurrentDate());
   const [summary, setSummary] = useState<Array<{ _id: string; totalQuantity: number; totalOrders: number; totalPrice: number }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSummary = async (d: string) => {
+  const totalQuantity = summary.reduce((sum, s) => sum + (s.totalQuantity || 0), 0);
+  const totalPrice = summary.reduce((sum, s) => sum + (s.totalPrice || 0), 0);
+
+  console.log(date);
+
+  const fetchSummary = useCallback(async (d: string) => {
     try {
       setLoading(true);
       setError(null);
       const res = await axiosSecure.get(`/meals/admin/summary/date/${d}`);
       setSummary(res.data?.data || []);
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to load summary");
+    } catch (err: unknown) {
+      let message = "Failed to load summary";
+      if (err && typeof err === "object") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const e = err as any;
+        message = e?.response?.data?.message || e?.message || message;
+      }
+      setError(message);
       setSummary([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [axiosSecure]);
 
   useEffect(() => {
     fetchSummary(date);
-  }, [date]);
+  }, [date, fetchSummary]);
 
   return (
     <div className="space-y-8">
@@ -194,10 +213,12 @@ const BillingGenerator: React.FC = () => {
             <div className="p-6 border-t border-border/50 bg-secondary/10">
                <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground font-medium">মোট ইউজার সংখ্যা: ৮৬ জন</span>
-                  <div className="text-right">
-                    <span className="text-muted-foreground">সর্বমোট বিল পরিমাণ: </span>
-                    <span className="text-xl font-bold text-gradient ml-2">৳ ৩,৪২,৫০০</span>
-                  </div>
+                      <div className="text-right">
+                        <span className="text-muted-foreground">মোট মিল সংখ্যা: </span>
+                        <span className="text-xl font-bold text-gradient ml-2">{totalQuantity} জন</span>
+                        <div className="text-muted-foreground">সর্বমোট বিল পরিমাণ: </div>
+                        <span className="text-xl font-bold text-gradient ml-2">৳ {totalPrice.toLocaleString()}</span>
+                      </div>
                </div>
             </div>
           </div>

@@ -4,6 +4,7 @@ import AllProfile from "@/components/dashboard/AllProfile";
 import AllUser from "@/components/dashboard/AllUser";
 import BillingGenerator from "@/components/dashboard/BillGenaretor";
 import MealControl from "@/components/dashboard/MealControl";
+import LockExpired from "@/pages/LockExpired";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import DashboardLayout from "@/Layouts/DashboardLayout";
 import AdminDashboard from "@/pages/AdminDashboard";
@@ -31,6 +32,7 @@ const appRoutes = createBrowserRouter([
       { index: true, element: <AdminDashboard /> },
       { path: "/admin-dashboard/users-management", element: <UserManagement /> },
       { path: "/admin-dashboard/meals-control", element: <MealControl /> },
+      { path: "/admin-dashboard/lock-expired", element: <LockExpired /> },
       { path: "/admin-dashboard/bill-generator", element: <BillingGenerator /> },
       { path: "/admin-dashboard/user", element: <AllUser /> },
       { path: "/admin-dashboard/Profile", element: <AllProfile /> },

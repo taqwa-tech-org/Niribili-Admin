@@ -27,9 +27,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Cookie options
 const cookieOptions = {
-  expires: 7, // 7 days
+  expires: 1,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'strict' as const,
 };
@@ -38,23 +37,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch current user from API
+
   const fetchCurrentUser = async (): Promise<User | null> => {
     try {
       const token = Cookies.get('accessToken');
-      console.log('Token from cookie:', token ? 'exists' : 'not found');
+
       if (!token) return null;
 
       const res = await axiosSecure.get('/user/me');
-      console.log('User data:', res.data);
       return res.data?.data || null;
+
     } catch (error) {
       console.error('Failed to fetch user:', error);
       return null;
     }
   };
 
-  // Initialize auth state on mount
   useEffect(() => {
     const initAuth = async () => {
       setLoading(true);
@@ -66,20 +64,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     initAuth();
   }, []);
 
-  // Login function
+
   const login = async (accessToken: string, refreshToken: string) => {
-    console.log('Login called with tokens');
     
-    // Store tokens in cookies
     Cookies.set('accessToken', accessToken, cookieOptions);
     Cookies.set('refreshToken', refreshToken, { ...cookieOptions, expires: 30 });
-    
-    console.log('Tokens stored in cookies');
-    console.log('accessToken cookie:', Cookies.get('accessToken') ? 'set' : 'not set');
 
     // Fetch user data
     const currentUser = await fetchCurrentUser();
-    console.log('Fetched user:', currentUser);
     setUser(currentUser);
   };
 

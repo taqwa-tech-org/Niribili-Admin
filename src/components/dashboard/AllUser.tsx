@@ -11,7 +11,7 @@ interface UserItem {
     status?: string;
     isDeleted?: boolean;
     createdAt?: string;
-}
+};
 
 const AllUser: React.FC = () => {
     const axiosSecure = useAxiosSecure();

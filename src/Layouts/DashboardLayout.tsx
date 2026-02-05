@@ -50,9 +50,8 @@ const DashboardLayout = ({ role = "admin" }: { role?: Role }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const menuItems = menuConfig[role];
-
   const { user, isAdmin, logout } = useAuth();
-console.log("nav",user?.name, user?.role);
+// console.log("nav",user?.name, user?.role);
 
   // রাউট অ্যাক্টিভ কিনা চেক করার লজিক
   const isActive = (href: string) => {
@@ -163,10 +162,15 @@ console.log("nav",user?.name, user?.role);
             
             <div className="h-8 w-[px] bg-border mx-1" />
 
-            <Button variant="ghost" size="icon" className="hover:text-destructive group" asChild>
-              <Link to="/">
-                <LogOut className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
-              </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hover:text-destructive group"
+              onClick={() => {
+                logout();
+              }}
+            >
+              <LogOut className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
             </Button>
           </div>
         </header>
