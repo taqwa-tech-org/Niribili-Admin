@@ -401,7 +401,7 @@ const UserTransaction = () => {
                     </div>
                   </div>
 
-                  {/* Gateway Info */}
+                  {/* Gateway Info new */}
                   {transaction.gatewayResponse && (
                     <div className="flex-1">
                       <div className="bg-gray-50 rounded-lg p-3">
