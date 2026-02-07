@@ -62,7 +62,7 @@ const AdminDashboard: React.FC = () => {
         </h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
         <div className="lg:col-span-1 space-y-6">
           <div className="glass p-6 rounded-3xl border border-border/50 bg-linear-to-b from-card to-background h-full">
             <h3 className="font-bold flex items-center gap-2 mb-6 text-lg">
