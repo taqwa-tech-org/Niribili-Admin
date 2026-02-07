@@ -20,18 +20,18 @@ const AdminDashboard: React.FC = () => {
     dinner: 0,
   });
 
-  const totalResidents = 124; // তোমার আগের লজিক 그대로
+  const totalResidents = 124; 
 
-  // 👉 আজকের তারিখ (YYYY-MM-DD)
+  
   const today = new Date().toISOString().split("T")[0];
-
+  console.log(today)
   useEffect(() => {
     const fetchMeals = async () => {
       try {
         const res = await axiosSecure.get(
-          `/meals/my-orders/date/${today}`
+          `/meals/admin/orders/date/${today}`
         );
-
+         console.log(res.data)
         const meals: MealOrder[] = res.data.data || [];
 
         const counts = {
