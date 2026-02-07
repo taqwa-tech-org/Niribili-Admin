@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Utensils } from "lucide-react";
 import useAxiosSecure from "@/AllHooks/useAxiosSecure";
+import UserTransaction from "@/components/dashboard/UserTransaction";
 
 type MealType = "breakfast" | "lunch" | "dinner";
 
@@ -111,6 +112,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+      <UserTransaction/>
     </div>
   );
 };
