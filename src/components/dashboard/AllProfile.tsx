@@ -257,6 +257,10 @@ const AllProfile: React.FC = () => {
                 value={selectedProfile.guardianName}
               />
               <DataField
+                label="Guardian number"
+                value={selectedProfile.guardianPhone}
+              />
+              <DataField
                 label="Building"
                 value={selectedProfile.buildingId?.name}
               />
