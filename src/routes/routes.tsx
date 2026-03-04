@@ -1,7 +1,7 @@
 import App from "@/App";
 import AuthComponent from "@/Auth/AuthComponent";
 import AllProfile from "@/components/dashboard/AllProfile";
-import AllUser from "@/components/dashboard/AllUser";
+// import AllUser from "@/components/dashboard/AllUser";
 import BillingGenerator from "@/components/dashboard/BillGenaretor";
 import MealControl from "@/components/dashboard/MealControl";
 import LockExpired from "@/pages/LockExpired";
@@ -38,7 +38,7 @@ const appRoutes = createBrowserRouter([
       { path: "meals-control", element: <MealControl /> },
       { path: "lock-expired", element: <LockExpired /> },
       { path: "bill-generator", element: <BillingGenerator /> },
-      { path: "user", element: <AllUser /> },
+      // { path: "user", element: <AllUser /> },
       { path: "Profile", element: <AllProfile /> },
       { path: "userbalance", element: <AllUserWalletBalance /> },
       { path: "locked-meals", element: <LockedMeals /> },
