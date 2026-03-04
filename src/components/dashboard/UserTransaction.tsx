@@ -43,82 +43,83 @@ interface Transaction {
   updatedAt: string;
 }
 
+interface Meta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 interface TransactionResponse {
   success: boolean;
   message: string;
   data: {
-    meta: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    };
+    meta: Meta;
     transactions: Transaction[];
   };
 }
 
 type FilterType = "all" | "deposit" | "deduct";
 
+const ITEMS_PER_PAGE = 10;
+
 const UserTransaction = () => {
   const axiosSecure = useAxiosSecure();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
+  const [meta, setMeta] = useState<Meta>({
+    total: 0,
+    page: 1,
+    limit: ITEMS_PER_PAGE,
+    totalPages: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
+  // Fetch whenever page, filter, or search changes
   useEffect(() => {
-    fetchTransactions();
-  }, []);
+    fetchTransactions(currentPage);
+  }, [currentPage, filterType, searchQuery]);
 
+  // Reset to page 1 when filter or search changes
   useEffect(() => {
-    filterTransactions();
-  }, [filterType, transactions, searchQuery]);
-
-  useEffect(() => {
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   }, [filterType, searchQuery]);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = async (page: number) => {
     try {
       setLoading(true);
       setError(null);
+
+      const params = new URLSearchParams({
+        status: "completed",
+        page: String(page),
+        limit: String(ITEMS_PER_PAGE),
+      });
+
+      if (filterType !== "all") {
+        params.append("type", filterType);
+      }
+
+      if (searchQuery.trim() !== "") {
+        params.append("search", searchQuery.trim());
+      }
+
       const response = await axiosSecure.get<TransactionResponse>(
-        "/wallet/admin/all-transactions?status=completed"
+        `/wallet/admin/all-transactions?${params.toString()}`
       );
-      
+
       if (response.data.success) {
         setTransactions(response.data.data.transactions);
+        setMeta(response.data.data.meta);
       }
     } catch (err: any) {
       setError(err.message || "Failed to fetch transactions");
     } finally {
       setLoading(false);
     }
-  };
-
-  const filterTransactions = () => {
-    let filtered = transactions;
-
-    // Filter by type
-    if (filterType !== "all") {
-      filtered = filtered.filter((transaction) => transaction.type === filterType);
-    }
-
-    // Filter by search query (name or email)
-    if (searchQuery.trim() !== "") {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (transaction) =>
-          transaction.userId.name.toLowerCase().includes(query) ||
-          transaction.userId.email.toLowerCase().includes(query)
-      );
-    }
-
-    setFilteredTransactions(filtered);
   };
 
   const formatDate = (dateString: string) => {
@@ -136,12 +137,6 @@ const UserTransaction = () => {
     return `৳${amount.toLocaleString()}`;
   };
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentTransactions = filteredTransactions.slice(startIndex, endIndex);
-
   const goToPage = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -149,6 +144,7 @@ const UserTransaction = () => {
 
   const getPaginationRange = () => {
     const range: (number | string)[] = [];
+    const { totalPages } = meta;
     const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
@@ -182,6 +178,9 @@ const UserTransaction = () => {
     return range;
   };
 
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const endIndex = Math.min(currentPage * ITEMS_PER_PAGE, meta.total);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)]">
@@ -196,7 +195,7 @@ const UserTransaction = () => {
         <div className="bg-white rounded-lg p-8 shadow-lg">
           <p className="text-red-600 text-lg font-semibold">Error: {error}</p>
           <button
-            onClick={fetchTransactions}
+            onClick={() => fetchTransactions(currentPage)}
             className="mt-4 px-6 py-2 bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] text-white rounded-lg hover:opacity-90 transition"
           >
             Retry
@@ -214,9 +213,7 @@ const UserTransaction = () => {
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
             User Balance Transactions
           </h1>
-          <p className="text-gray-600">
-            Total Transactions: {transactions.length}
-          </p>
+          <p className="text-gray-600">Total Transactions: {meta.total}</p>
         </div>
 
         {/* Search Bar */}
@@ -247,7 +244,12 @@ const UserTransaction = () => {
                 onClick={() => setSearchQuery("")}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -260,7 +262,7 @@ const UserTransaction = () => {
           </div>
           {searchQuery && (
             <p className="mt-2 text-sm text-gray-600">
-              Found {filteredTransactions.length} result{filteredTransactions.length !== 1 ? "s" : ""}
+              Found {meta.total} result{meta.total !== 1 ? "s" : ""}
             </p>
           )}
         </div>
@@ -276,7 +278,7 @@ const UserTransaction = () => {
                   : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
-              All Transactions ({transactions.length})
+              All Transactions
             </button>
             <button
               onClick={() => setFilterType("deposit")}
@@ -286,7 +288,7 @@ const UserTransaction = () => {
                   : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
-              Deposits ({transactions.filter((t) => t.type === "deposit").length})
+              Deposits
             </button>
             <button
               onClick={() => setFilterType("deduct")}
@@ -296,21 +298,23 @@ const UserTransaction = () => {
                   : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
-              Deductions ({transactions.filter((t) => t.type === "deduct").length})
+              Deductions
             </button>
           </div>
         </div>
 
         {/* Transactions List */}
         <div className="space-y-4">
-          {currentTransactions.length === 0 ? (
+          {transactions.length === 0 ? (
             <div className="bg-white rounded-xl shadow-lg p-8 text-center">
               <p className="text-gray-500 text-lg">
-                {searchQuery ? "No transactions found matching your search" : "No transactions found"}
+                {searchQuery
+                  ? "No transactions found matching your search"
+                  : "No transactions found"}
               </p>
             </div>
           ) : (
-            currentTransactions.map((transaction) => (
+            transactions.map((transaction) => (
               <div
                 key={transaction._id}
                 className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
@@ -401,7 +405,7 @@ const UserTransaction = () => {
                     </div>
                   </div>
 
-                  {/* Gateway Info new */}
+                  {/* Gateway Info */}
                   {transaction.gatewayResponse && (
                     <div className="flex-1">
                       <div className="bg-gray-50 rounded-lg p-3">
@@ -424,13 +428,12 @@ const UserTransaction = () => {
         </div>
 
         {/* Pagination */}
-        {filteredTransactions.length > itemsPerPage && (
+        {meta.totalPages > 1 && (
           <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               {/* Page Info */}
               <div className="text-sm text-gray-600">
-                Showing {startIndex + 1} to {Math.min(endIndex, filteredTransactions.length)} of{" "}
-                {filteredTransactions.length} transactions
+                Showing {startIndex} to {endIndex} of {meta.total} transactions
               </div>
 
               {/* Pagination Controls */}
@@ -453,7 +456,9 @@ const UserTransaction = () => {
                   {getPaginationRange().map((page, index) => (
                     <button
                       key={index}
-                      onClick={() => typeof page === "number" && goToPage(page)}
+                      onClick={() =>
+                        typeof page === "number" && goToPage(page)
+                      }
                       disabled={page === "..."}
                       className={`min-w-[40px] h-10 rounded-lg font-semibold transition-all ${
                         page === currentPage
@@ -471,9 +476,9 @@ const UserTransaction = () => {
                 {/* Next Button */}
                 <button
                   onClick={() => goToPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === meta.totalPages}
                   className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                    currentPage === totalPages
+                    currentPage === meta.totalPages
                       ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                       : "bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] text-white hover:opacity-90"
                   }`}
