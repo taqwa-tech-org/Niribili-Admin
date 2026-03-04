@@ -18,60 +18,75 @@ interface WalletUser {
   isActive: boolean;
 }
 
+const PAGE_SIZE = 10;
+
 const AllUserWalletBalance: React.FC = () => {
   const axiosSecure = useAxiosSecure();
 
-  const [wallets, setWallets] = useState<WalletUser[]>([]);
+  // ✅ All wallets fetched once
+  const [allWallets, setAllWallets] = useState<WalletUser[]>([]);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [fetching, setFetching] = useState(false);
 
   const [selectedUser, setSelectedUser] = useState<WalletUser | null>(null);
-  const [amount, setAmount] = useState<number>();
+  const [amount, setAmount] = useState<number>(0);
   const [reason, setReason] = useState("");
-  const [operation, setOperation] = useState<"increase" | "decrease">(
-    "increase"
-  );
+  const [operation, setOperation] = useState<"increase" | "decrease">("increase");
   const [loading, setLoading] = useState(false);
 
   /* =========================
-     Fetch wallets
+     Fetch ALL wallets once
      ========================= */
-  const fetchWallets = async () => {
+  const fetchAllWallets = async () => {
     try {
-      const res = await axiosSecure.get("/wallet/allUser/balance");
-
-      const walletArray = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data?.data)
-        ? res.data.data
-        : [];
-
-      setWallets(walletArray);
+      setFetching(true);
+      const res = await axiosSecure.get(`/wallet/allUser/balance?limit=99999`);
+      const walletArray = res.data?.data?.wallets || [];
+      setAllWallets(walletArray);
     } catch (error: any) {
       Swal.fire(
         "Error",
         error?.response?.data?.message || "Failed to load wallet data",
         "error"
       );
-      setWallets([]);
+      setAllWallets([]);
+    } finally {
+      setFetching(false);
     }
   };
 
   useEffect(() => {
-    fetchWallets();
+    fetchAllWallets();
   }, []);
 
   /* =========================
-     Search filter
+     Client-side search across ALL data
      ========================= */
   const filteredWallets = useMemo(() => {
-    return wallets.filter((w) => {
-      const q = search.toLowerCase();
-      return (
+    const q = search.trim().toLowerCase();
+    if (!q) return allWallets;
+    return allWallets.filter(
+      (w) =>
         w.userId?.name?.toLowerCase().includes(q) ||
         w.userId?.email?.toLowerCase().includes(q)
-      );
-    });
-  }, [wallets, search]);
+    );
+  }, [allWallets, search]);
+
+  // ✅ Reset to page 1 whenever search changes
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  /* =========================
+     Client-side pagination on filtered results
+     ========================= */
+  const totalPages = Math.max(1, Math.ceil(filteredWallets.length / PAGE_SIZE));
+
+  const paginatedWallets = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredWallets.slice(start, start + PAGE_SIZE);
+  }, [filteredWallets, page]);
 
   /* =========================
      Adjust balance
@@ -87,11 +102,7 @@ const AllUserWalletBalance: React.FC = () => {
 
       await axiosSecure.patch(
         `/wallet/admin/adjust/${selectedUser.userId._id}`,
-        {
-          amount,
-          operation,
-          reason,
-        }
+        { amount, operation, reason }
       );
 
       Swal.fire("Success", "Balance updated successfully", "success");
@@ -101,7 +112,8 @@ const AllUserWalletBalance: React.FC = () => {
       setReason("");
       setOperation("increase");
 
-      fetchWallets();
+      // ✅ Re-fetch all data to reflect updated balance
+      fetchAllWallets();
     } catch (error: any) {
       Swal.fire(
         "Error",
@@ -121,12 +133,17 @@ const AllUserWalletBalance: React.FC = () => {
         </h2>
 
         {/* ================= SEARCH ================= */}
-        <div className="mb-4">
+        <div className="mb-4 flex items-center gap-3">
           <Input
-            placeholder="Search by name or email..."
+            placeholder="Search by name or email across all users..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          {search && (
+            <span className="text-sm text-gray-500 whitespace-nowrap">
+              {filteredWallets.length} result{filteredWallets.length !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
 
         {/* ================= TABLE ================= */}
@@ -142,7 +159,15 @@ const AllUserWalletBalance: React.FC = () => {
             </thead>
 
             <tbody>
-              {filteredWallets.length === 0 && (
+              {fetching && (
+                <tr>
+                  <td colSpan={4} className="p-4 text-center text-gray-400">
+                    Loading...
+                  </td>
+                </tr>
+              )}
+
+              {!fetching && paginatedWallets.length === 0 && (
                 <tr>
                   <td colSpan={4} className="p-4 text-center text-gray-500">
                     No user found
@@ -150,25 +175,46 @@ const AllUserWalletBalance: React.FC = () => {
                 </tr>
               )}
 
-              {filteredWallets.map((wallet) => (
-                <tr key={wallet._id} className="border-b">
-                  <td className="p-3">{wallet.userId?.name}</td>
-                  <td className="p-3">{wallet.userId?.email}</td>
-                  <td className="p-3 text-center font-semibold">
-                    ৳ {wallet.balance}
-                  </td>
-                  <td className="p-3 text-center">
-                    <Button
-                      size="sm"
-                      onClick={() => setSelectedUser(wallet)}
-                    >
-                      Adjust
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+              {!fetching &&
+                paginatedWallets.map((wallet) => (
+                  <tr key={wallet._id} className="border-b hover:bg-gray-50 transition-colors">
+                    <td className="p-3">{wallet.userId?.name}</td>
+                    <td className="p-3">{wallet.userId?.email}</td>
+                    <td className="p-3 text-center font-semibold">
+                      ৳ {wallet.balance}
+                    </td>
+                    <td className="p-3 text-center">
+                      <Button size="sm" onClick={() => setSelectedUser(wallet)}>
+                        Adjust
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
+        </div>
+
+        {/* ================= PAGINATION ================= */}
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <Button
+            variant="outline"
+            disabled={page === 1}
+            onClick={() => setPage((prev) => prev - 1)}
+          >
+            Prev
+          </Button>
+
+          <span className="text-sm text-gray-600">
+            Page {page} of {totalPages}
+          </span>
+
+          <Button
+            variant="outline"
+            disabled={page === totalPages}
+            onClick={() => setPage((prev) => prev + 1)}
+          >
+            Next
+          </Button>
         </div>
       </div>
 
@@ -214,10 +260,7 @@ const AllUserWalletBalance: React.FC = () => {
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedUser(null)}
-              >
+              <Button variant="outline" onClick={() => setSelectedUser(null)}>
                 Cancel
               </Button>
 
