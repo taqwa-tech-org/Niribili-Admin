@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import useAxiosSecure from "@/AllHooks/useAxiosSecure";
 import Swal from "sweetalert2";
 import { Button } from "@/components/ui/button";
@@ -18,16 +18,30 @@ interface WalletUser {
   isActive: boolean;
 }
 
-const PAGE_SIZE = 10;
+interface Meta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+const PAGE_SIZE = 50;
 
 const AllUserWalletBalance: React.FC = () => {
   const axiosSecure = useAxiosSecure();
 
-  // ✅ All wallets fetched once
-  const [allWallets, setAllWallets] = useState<WalletUser[]>([]);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [wallets, setWallets] = useState<WalletUser[]>([]);
+  const [meta, setMeta] = useState<Meta>({
+    total: 0,
+    page: 1,
+    limit: PAGE_SIZE,
+    totalPages: 1,
+  });
   const [fetching, setFetching] = useState(false);
+  const [page, setPage] = useState(1);
+
+  // ✅ Search only on current page (no API call)
+  const [search, setSearch] = useState("");
 
   const [selectedUser, setSelectedUser] = useState<WalletUser | null>(null);
   const [amount, setAmount] = useState<number>(0);
@@ -36,57 +50,54 @@ const AllUserWalletBalance: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   /* =========================
-     Fetch ALL wallets once
+     Server-side fetch
      ========================= */
-  const fetchAllWallets = async () => {
+  const fetchWallets = useCallback(async (currentPage: number) => {
     try {
       setFetching(true);
-      const res = await axiosSecure.get(`/wallet/allUser/balance?limit=99999`);
-      const walletArray = res.data?.data?.wallets || [];
-      setAllWallets(walletArray);
+      setSearch(""); // ✅ clear search on page change
+
+      const res = await axiosSecure.get(
+        `/wallet/allUser/balance?page=${currentPage}&limit=${PAGE_SIZE}`
+      );
+
+      setWallets(res.data?.data?.wallets || []);
+      setMeta(
+        res.data?.data?.meta || {
+          total: 0,
+          page: currentPage,
+          limit: PAGE_SIZE,
+          totalPages: 1,
+        }
+      );
     } catch (error: any) {
       Swal.fire(
         "Error",
         error?.response?.data?.message || "Failed to load wallet data",
         "error"
       );
-      setAllWallets([]);
+      setWallets([]);
     } finally {
       setFetching(false);
     }
-  };
+  }, [axiosSecure]);
 
   useEffect(() => {
-    fetchAllWallets();
-  }, []);
+    fetchWallets(page);
+  }, [page]);
 
   /* =========================
-     Client-side search across ALL data
+     Client-side search — current page only
      ========================= */
   const filteredWallets = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return allWallets;
-    return allWallets.filter(
+    if (!q) return wallets;
+    return wallets.filter(
       (w) =>
         w.userId?.name?.toLowerCase().includes(q) ||
         w.userId?.email?.toLowerCase().includes(q)
     );
-  }, [allWallets, search]);
-
-  // ✅ Reset to page 1 whenever search changes
-  useEffect(() => {
-    setPage(1);
-  }, [search]);
-
-  /* =========================
-     Client-side pagination on filtered results
-     ========================= */
-  const totalPages = Math.max(1, Math.ceil(filteredWallets.length / PAGE_SIZE));
-
-  const paginatedWallets = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filteredWallets.slice(start, start + PAGE_SIZE);
-  }, [filteredWallets, page]);
+  }, [wallets, search]);
 
   /* =========================
      Adjust balance
@@ -112,8 +123,7 @@ const AllUserWalletBalance: React.FC = () => {
       setReason("");
       setOperation("increase");
 
-      // ✅ Re-fetch all data to reflect updated balance
-      fetchAllWallets();
+      fetchWallets(page);
     } catch (error: any) {
       Swal.fire(
         "Error",
@@ -125,6 +135,27 @@ const AllUserWalletBalance: React.FC = () => {
     }
   };
 
+  /* =========================
+     Pagination range
+     ========================= */
+  const getPaginationRange = () => {
+    const { totalPages } = meta;
+    const range: (number | string)[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) range.push(i);
+    } else if (page <= 3) {
+      range.push(1, 2, 3, 4, "...", totalPages);
+    } else if (page >= totalPages - 2) {
+      range.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      range.push(1, "...", page - 1, page, page + 1, "...", totalPages);
+    }
+    return range;
+  };
+
+  const startIndex = (page - 1) * PAGE_SIZE + 1;
+  const endIndex = Math.min(page * PAGE_SIZE, meta.total);
+
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="rounded-xl bg-white p-6 shadow">
@@ -135,7 +166,7 @@ const AllUserWalletBalance: React.FC = () => {
         {/* ================= SEARCH ================= */}
         <div className="mb-4 flex items-center gap-3">
           <Input
-            placeholder="Search by name or email across all users..."
+            placeholder="Search by name or email on this page..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -167,21 +198,24 @@ const AllUserWalletBalance: React.FC = () => {
                 </tr>
               )}
 
-              {!fetching && paginatedWallets.length === 0 && (
+              {!fetching && filteredWallets.length === 0 && (
                 <tr>
                   <td colSpan={4} className="p-4 text-center text-gray-500">
-                    No user found
+                    {search ? "No results found on this page" : "No user found"}
                   </td>
                 </tr>
               )}
 
               {!fetching &&
-                paginatedWallets.map((wallet) => (
-                  <tr key={wallet._id} className="border-b hover:bg-gray-50 transition-colors">
+                filteredWallets.map((wallet) => (
+                  <tr
+                    key={wallet._id}
+                    className="border-b hover:bg-gray-50 transition-colors"
+                  >
                     <td className="p-3">{wallet.userId?.name}</td>
                     <td className="p-3">{wallet.userId?.email}</td>
                     <td className="p-3 text-center font-semibold">
-                      ৳ {wallet.balance}
+                      ৳ {wallet.balance.toLocaleString()}
                     </td>
                     <td className="p-3 text-center">
                       <Button size="sm" onClick={() => setSelectedUser(wallet)}>
@@ -195,27 +229,52 @@ const AllUserWalletBalance: React.FC = () => {
         </div>
 
         {/* ================= PAGINATION ================= */}
-        <div className="flex justify-center items-center gap-2 mt-6">
-          <Button
-            variant="outline"
-            disabled={page === 1}
-            onClick={() => setPage((prev) => prev - 1)}
-          >
-            Prev
-          </Button>
+        {meta.totalPages > 1 && (
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+            {/* Info */}
+            <p className="text-sm text-gray-500">
+              Showing {startIndex}–{endIndex} of {meta.total} users
+            </p>
 
-          <span className="text-sm text-gray-600">
-            Page {page} of {totalPages}
-          </span>
+            {/* Controls */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1 || fetching}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Prev
+              </Button>
 
-          <Button
-            variant="outline"
-            disabled={page === totalPages}
-            onClick={() => setPage((prev) => prev + 1)}
-          >
-            Next
-          </Button>
-        </div>
+              {getPaginationRange().map((p, i) => (
+                <button
+                  key={i}
+                  disabled={p === "..." || fetching}
+                  onClick={() => typeof p === "number" && setPage(p)}
+                  className={`min-w-[36px] h-9 rounded-lg text-sm font-semibold transition-all ${
+                    p === page
+                      ? "bg-primary text-white shadow"
+                      : p === "..."
+                      ? "text-gray-400 cursor-default"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === meta.totalPages || fetching}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ================= MODAL ================= */}
