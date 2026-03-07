@@ -208,7 +208,7 @@ const AllProfile: React.FC = () => {
                 {label}
                 {isActive && meta.total > 0 && (
                   <span className="bg-white/25 text-xs px-1.5 py-0.5 rounded-full font-semibold">
-                    {meta.total}
+                    {/* {meta.total} */}
                   </span>
                 )}
               </span>
