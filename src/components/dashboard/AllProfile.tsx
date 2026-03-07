@@ -68,50 +68,73 @@ const AllProfile: React.FC = () => {
     try {
       setLoading(true);
 
-      /**
-       * Backend query strategy:
-       *  - deleted tab → isDeleted=true   (returns soft-deleted profiles regardless of accountStatus)
-       *  - other tabs  → accountStatus=<tab> & isDeleted=false
-       */
       const params: Record<string, any> = {
         page: currentPage,
         limit: LIMIT,
       };
 
-      if (currentTab === "deleted") {
-        params.isDeleted = true;
-        // No accountStatus filter — deleted profiles can have any accountStatus
-      } else {
-        params.accountStatus = currentTab; // "pending" | "process" | "approve"
-        params.isDeleted = false;
-      }
-
       if (currentSearch.trim()) {
         params.search = currentSearch.trim();
       }
 
-      const res = await axiosSecure.get("/profile", { params });
+      if (currentTab === "deleted") {
+        const res = await axiosSecure.get("/user/deleted/all", { params });
 
-      if (res.data?.success) {
-        const results: ProfileItem[] = res.data.data.results || [];
+        if (res.data?.success) {
+          const users = res.data.data.users || [];
+          const mappedResults: ProfileItem[] = users.map((u: any) => {
+            const profile = u.profile || {};
+            return {
+              _id: profile._id || u._id,
+              userId: {
+                _id: u._id,
+                name: u.name,
+                email: u.email,
+                phone: u.phone,
+                role: u.role,
+              },
+              isDeleted: u.isDeleted,
+              profilePhoto: profile.profilePhoto,
+              nidPhoto: profile.nidPhoto,
+              guardianName: profile.guardianName,
+              guardianPhone: profile.guardianPhone,
+              guardianRelation: profile.guardianRelation,
+              emergencyContact: profile.emergencyContact,
+              whatsappNumber: profile.whatsappNumber,
+              accountStatus: profile.accountStatus,
+              buildingId: profile.buildingId,
+              flatId: profile.flatId,
+              room: profile.room,
+              bio: profile.bio,
+              role: profile.role || u.role,
+            };
+          });
 
-        /**
-         * Client-side safety filter in case the backend ignores params
-         * and returns a mixed bag of profiles.
-         */
-        const filtered =
-          currentTab === "deleted"
-            ? results.filter((p) => p.isDeleted === true)
-            : results.filter(
-                (p) =>
-                  p.isDeleted !== true &&
-                  p.accountStatus?.toLowerCase() === currentTab
-              );
-
-        setProfiles(filtered);
-        setMeta(res.data.data.meta || { total: 0, page: 1, limit: LIMIT, totalPages: 1 });
+          setProfiles(mappedResults);
+          setMeta(res.data.data.meta || { total: 0, page: 1, limit: LIMIT, totalPages: 1 });
+        } else {
+          setProfiles([]);
+        }
       } else {
-        setProfiles([]);
+        params.accountStatus = currentTab; // "pending" | "process" | "approve"
+        params.isDeleted = false;
+
+        const res = await axiosSecure.get("/profile", { params });
+
+        if (res.data?.success) {
+          const results: ProfileItem[] = res.data.data.results || [];
+
+          const filtered = results.filter(
+            (p) =>
+              p.isDeleted !== true &&
+              p.accountStatus?.toLowerCase() === currentTab
+          );
+
+          setProfiles(filtered);
+          setMeta(res.data.data.meta || { total: 0, page: 1, limit: LIMIT, totalPages: 1 });
+        } else {
+          setProfiles([]);
+        }
       }
     } catch (err) {
       console.error("Fetch error:", err);
