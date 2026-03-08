@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import useAxiosSecure from "@/AllHooks/useAxiosSecure";
 
 interface User {
@@ -43,56 +43,36 @@ interface Transaction {
   updatedAt: string;
 }
 
-interface TransactionResponse {
-  success: boolean;
-  message: string;
-  data: {
-    meta: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    };
-    transactions: Transaction[];
-  };
-}
-
 type FilterType = "all" | "deposit" | "deduct";
+
+const ITEMS_PER_PAGE = 10;
 
 const UserTransaction = () => {
   const axiosSecure = useAxiosSecure();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
+
+  // ✅ All transactions fetched once
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
-  useEffect(() => {
-    filterTransactions();
-  }, [filterType, transactions, searchQuery]);
-
-  useEffect(() => {
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [filterType, searchQuery]);
-
-  const fetchTransactions = async () => {
+  /* =========================
+     Fetch ALL transactions once
+     ========================= */
+  const fetchAllTransactions = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axiosSecure.get<TransactionResponse>(
-        "/wallet/admin/all-transactions?status=completed"
+
+      const res = await axiosSecure.get(
+        `/wallet/admin/all-transactions?status=completed&limit=99999`
       );
-      
-      if (response.data.success) {
-        setTransactions(response.data.data.transactions);
-      }
+
+      const data = res.data?.data?.transactions || [];
+      setAllTransactions(data);
     } catch (err: any) {
       setError(err.message || "Failed to fetch transactions");
     } finally {
@@ -100,27 +80,58 @@ const UserTransaction = () => {
     }
   };
 
-  const filterTransactions = () => {
-    let filtered = transactions;
+  useEffect(() => {
+    fetchAllTransactions();
+  }, []);
 
-    // Filter by type
-    if (filterType !== "all") {
-      filtered = filtered.filter((transaction) => transaction.type === filterType);
-    }
+  /* =========================
+     Client-side filter by type
+     ========================= */
+  const typeFiltered = useMemo(() => {
+    if (filterType === "all") return allTransactions;
+    return allTransactions.filter((t) => t.type === filterType);
+  }, [allTransactions, filterType]);
 
-    // Filter by search query (name or email)
-    if (searchQuery.trim() !== "") {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (transaction) =>
-          transaction.userId.name.toLowerCase().includes(query) ||
-          transaction.userId.email.toLowerCase().includes(query)
-      );
-    }
+  /* =========================
+     Client-side search across ALL data
+     ========================= */
+  const filteredTransactions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return typeFiltered;
+    return typeFiltered.filter(
+      (t) =>
+        t.userId?.name?.toLowerCase().includes(q) ||
+        t.userId?.email?.toLowerCase().includes(q)
+    );
+  }, [typeFiltered, searchQuery]);
 
-    setFilteredTransactions(filtered);
-  };
+  // ✅ Reset to page 1 when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterType]);
 
+  /* =========================
+     Client-side pagination
+     ========================= */
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE)
+  );
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredTransactions.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredTransactions, currentPage]);
+
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const endIndex = Math.min(
+    currentPage * ITEMS_PER_PAGE,
+    filteredTransactions.length
+  );
+
+  /* =========================
+     Helpers
+     ========================= */
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -132,15 +143,7 @@ const UserTransaction = () => {
     });
   };
 
-  const formatCurrency = (amount: number) => {
-    return `৳${amount.toLocaleString()}`;
-  };
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentTransactions = filteredTransactions.slice(startIndex, endIndex);
+  const formatCurrency = (amount: number) => `৳${amount.toLocaleString()}`;
 
   const goToPage = (page: number) => {
     setCurrentPage(page);
@@ -152,22 +155,16 @@ const UserTransaction = () => {
     const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) {
-        range.push(i);
-      }
+      for (let i = 1; i <= totalPages; i++) range.push(i);
     } else {
       if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) {
-          range.push(i);
-        }
+        for (let i = 1; i <= 4; i++) range.push(i);
         range.push("...");
         range.push(totalPages);
       } else if (currentPage >= totalPages - 2) {
         range.push(1);
         range.push("...");
-        for (let i = totalPages - 3; i <= totalPages; i++) {
-          range.push(i);
-        }
+        for (let i = totalPages - 3; i <= totalPages; i++) range.push(i);
       } else {
         range.push(1);
         range.push("...");
@@ -182,6 +179,9 @@ const UserTransaction = () => {
     return range;
   };
 
+  /* =========================
+     Render
+     ========================= */
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)]">
@@ -196,7 +196,7 @@ const UserTransaction = () => {
         <div className="bg-white rounded-lg p-8 shadow-lg">
           <p className="text-red-600 text-lg font-semibold">Error: {error}</p>
           <button
-            onClick={fetchTransactions}
+            onClick={fetchAllTransactions}
             className="mt-4 px-6 py-2 bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] text-white rounded-lg hover:opacity-90 transition"
           >
             Retry
@@ -215,7 +215,7 @@ const UserTransaction = () => {
             User Balance Transactions
           </h1>
           <p className="text-gray-600">
-            Total Transactions: {transactions.length}
+            Total Transactions: {allTransactions.length}
           </p>
         </div>
 
@@ -224,7 +224,7 @@ const UserTransaction = () => {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search by name or email..."
+              placeholder="Search by name or email across all transactions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full px-5 py-3 pl-12 border-2 border-gray-300 rounded-lg focus:border-[hsl(168,80%,32%)] focus:outline-none transition-colors text-gray-700"
@@ -247,7 +247,12 @@ const UserTransaction = () => {
                 onClick={() => setSearchQuery("")}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -260,7 +265,8 @@ const UserTransaction = () => {
           </div>
           {searchQuery && (
             <p className="mt-2 text-sm text-gray-600">
-              Found {filteredTransactions.length} result{filteredTransactions.length !== 1 ? "s" : ""}
+              Found {filteredTransactions.length} result
+              {filteredTransactions.length !== 1 ? "s" : ""}
             </p>
           )}
         </div>
@@ -268,49 +274,42 @@ const UserTransaction = () => {
         {/* Filter Toggle */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => setFilterType("all")}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
-                filterType === "all"
-                  ? "bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] text-white shadow-lg scale-105"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              All Transactions ({transactions.length})
-            </button>
-            <button
-              onClick={() => setFilterType("deposit")}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
-                filterType === "deposit"
-                  ? "bg-gradient-to-r from-green-600 to-green-500 text-white shadow-lg scale-105"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              Deposits ({transactions.filter((t) => t.type === "deposit").length})
-            </button>
-            <button
-              onClick={() => setFilterType("deduct")}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
-                filterType === "deduct"
-                  ? "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg scale-105"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              Deductions ({transactions.filter((t) => t.type === "deduct").length})
-            </button>
+            {(["all", "deposit", "deduct"] as FilterType[]).map((type) => (
+              <button
+                key={type}
+                onClick={() => setFilterType(type)}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
+                  filterType === type
+                    ? type === "all"
+                      ? "bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] text-white shadow-lg scale-105"
+                      : type === "deposit"
+                      ? "bg-gradient-to-r from-green-600 to-green-500 text-white shadow-lg scale-105"
+                      : "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg scale-105"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                {type === "all"
+                  ? "All Transactions"
+                  : type === "deposit"
+                  ? "Deposits"
+                  : "Deductions"}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Transactions List */}
         <div className="space-y-4">
-          {currentTransactions.length === 0 ? (
+          {paginatedTransactions.length === 0 ? (
             <div className="bg-white rounded-xl shadow-lg p-8 text-center">
               <p className="text-gray-500 text-lg">
-                {searchQuery ? "No transactions found matching your search" : "No transactions found"}
+                {searchQuery
+                  ? "No transactions found matching your search"
+                  : "No transactions found"}
               </p>
             </div>
           ) : (
-            currentTransactions.map((transaction) => (
+            paginatedTransactions.map((transaction) => (
               <div
                 key={transaction._id}
                 className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
@@ -401,7 +400,7 @@ const UserTransaction = () => {
                     </div>
                   </div>
 
-                  {/* Gateway Info new */}
+                  {/* Gateway Info */}
                   {transaction.gatewayResponse && (
                     <div className="flex-1">
                       <div className="bg-gray-50 rounded-lg p-3">
@@ -424,18 +423,15 @@ const UserTransaction = () => {
         </div>
 
         {/* Pagination */}
-        {filteredTransactions.length > itemsPerPage && (
+        {totalPages > 1 && (
           <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              {/* Page Info */}
               <div className="text-sm text-gray-600">
-                Showing {startIndex + 1} to {Math.min(endIndex, filteredTransactions.length)} of{" "}
+                Showing {startIndex} to {endIndex} of{" "}
                 {filteredTransactions.length} transactions
               </div>
 
-              {/* Pagination Controls */}
               <div className="flex items-center gap-2">
-                {/* Previous Button */}
                 <button
                   onClick={() => goToPage(currentPage - 1)}
                   disabled={currentPage === 1}
@@ -448,12 +444,13 @@ const UserTransaction = () => {
                   Previous
                 </button>
 
-                {/* Page Numbers */}
                 <div className="flex items-center gap-1">
                   {getPaginationRange().map((page, index) => (
                     <button
                       key={index}
-                      onClick={() => typeof page === "number" && goToPage(page)}
+                      onClick={() =>
+                        typeof page === "number" && goToPage(page)
+                      }
                       disabled={page === "..."}
                       className={`min-w-[40px] h-10 rounded-lg font-semibold transition-all ${
                         page === currentPage
@@ -468,7 +465,6 @@ const UserTransaction = () => {
                   ))}
                 </div>
 
-                {/* Next Button */}
                 <button
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === totalPages}

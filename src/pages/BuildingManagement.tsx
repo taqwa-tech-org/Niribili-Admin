@@ -32,19 +32,27 @@ const BuildingManagement = () => {
   const [viewingUser, setViewingUser] = useState<UserProfile | null>(null); // State for single user view
 
   const fetchData = useCallback(async () => {
-    try {
-      const [b, f, u] = await Promise.all([
-        axiosSecure.get("/buildings"),
-        axiosSecure.get("/flats"),
-        axiosSecure.get("/profile"),
-      ]);
-      setBuildings(b.data?.data || b.data || []);
-      setFlats(f.data?.data || f.data || []);
-      setUsers(u.data?.data || u.data || []);
-    } catch (err) {
-      Swal.fire("ত্রুটি", "সম্পত্তির তথ্য লোড করতে ব্যর্থ", "error");
-    }
-  }, [axiosSecure]);
+  try {
+    const [bRes, fRes, pRes] = await Promise.all([
+      axiosSecure.get("/buildings"),
+      axiosSecure.get("/flats"),
+      axiosSecure.get("/profile"),
+    ]);
+
+    // Buildings
+    setBuildings(bRes.data?.data?.buildings || []);
+
+    // Flats
+    setFlats(fRes.data?.data || []);
+
+    // Profiles
+    setUsers(pRes.data?.data?.results || []);
+
+  } catch (err) {
+    console.error(err);
+    Swal.fire("ত্রুটি", "সম্পত্তির তথ্য লোড করতে ব্যর্থ", "error");
+  }
+}, [axiosSecure]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
