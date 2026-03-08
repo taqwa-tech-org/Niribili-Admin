@@ -106,7 +106,7 @@ const UserManagement = () => {
 
     if (result.isConfirmed) {
       try {
-        await axiosSecure.delete(`/profile/${id}`);
+        await axiosSecure.delete(`/user/delete/${id}`);
         setUsers((prev) => prev.filter((user) => user._id !== id));
         Swal.fire({ title: "সফল!", text: "ব্যবহারকারীকে সরানো হয়েছে।", icon: "success", timer: 1000, showConfirmButton: false });
       } catch (err) {
@@ -327,7 +327,7 @@ const UserManagement = () => {
                                 size="icon"
                                 variant="ghost"
                                 className="h-9 w-9 rounded-xl text-destructive hover:bg-destructive/10 shadow-sm"
-                                onClick={() => handleDeleteUser(u._id)}
+                               onClick={() => handleDeleteUser(u.userId?._id || "")}
                               >
                                 <Trash2 className="w-4" />
                               </Button>
