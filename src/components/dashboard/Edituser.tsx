@@ -73,15 +73,36 @@ const blankForm = (): EditForm => ({
   room: "", accountStatus: "pending", whatsappNumber: "", bio: "",
 });
 
+const inputCls = "w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100 placeholder:text-gray-300";
+const selectCls = inputCls + " appearance-none cursor-pointer";
+
 /* ─── Spinner ──────────────────────────────────────────── */
 const Spinner = ({ size = 16, light = false }: { size?: number; light?: boolean }) => (
   <svg
     style={{ width: size, height: size, animation: "spin 0.65s linear infinite", flexShrink: 0 }}
     viewBox="0 0 24 24" fill="none"
   >
-    <circle cx="12" cy="12" r="10" stroke={light ? "rgba(255,255,255,0.3)"  : "rgba(0,0,0,0.1)"} strokeWidth="3" />
+    <circle cx="12" cy="12" r="10" stroke={light ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.1)"} strokeWidth="3" />
     <path d="M12 2a10 10 0 0 1 10 10" stroke={light ? "#fff" : "hsl(168,80%,32%)"} strokeWidth="3" strokeLinecap="round" />
   </svg>
+);
+
+/* ✅ Field এবং Section কে বাইরে নিয়ে আসা হয়েছে */
+const Field = ({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) => (
+  <div className={`flex flex-col gap-1.5 ${full ? "col-span-2" : ""}`}>
+    <label className="text-xs font-semibold uppercase tracking-widest text-gray-400">{label}</label>
+    {children}
+  </div>
+);
+
+const Section = ({ label }: { label: string }) => (
+  <div className="col-span-2 flex items-center gap-3 mt-2">
+    <span
+      className="text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full text-white"
+      style={{ background: "linear-gradient(135deg, hsl(168,80%,32%) 0%, hsl(168,60%,45%) 100%)" }}
+    >{label}</span>
+    <div className="flex-1 h-px bg-gray-100" />
+  </div>
 );
 
 /* ══════════════════════════════════════════════════════════ */
@@ -214,28 +235,6 @@ const Edituser: React.FC = () => {
     );
   });
 
-  /* ─── Field component ─── */
-  const Field = ({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) => (
-    <div className={`flex flex-col gap-1.5 ${full ? "col-span-2" : ""}`}>
-      <label className="text-xs font-semibold uppercase tracking-widest text-gray-400">{label}</label>
-      {children}
-    </div>
-  );
-
-  const inputCls = "w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100 placeholder:text-gray-300";
-  const selectCls = inputCls + " appearance-none cursor-pointer";
-
-  /* ─── Section label ─── */
-  const Section = ({ label }: { label: string }) => (
-    <div className="col-span-2 flex items-center gap-3 mt-2">
-      <span
-        className="text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full text-white"
-        style={{ background: "linear-gradient(135deg, hsl(168,80%,32%) 0%, hsl(168,60%,45%) 100%)" }}
-      >{label}</span>
-      <div className="flex-1 h-px bg-gray-100" />
-    </div>
-  );
-
   /* ════════════════════════════════════════════════════════ */
   return (
     <>
@@ -271,7 +270,6 @@ const Edituser: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Search */}
             <div className="flex items-center gap-2.5 bg-gray-50 border border-gray-200 rounded-xl px-3.5 h-10 w-56 focus-within:border-teal-400 focus-within:ring-2 focus-within:ring-teal-50 transition">
               <svg className="text-gray-400 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
@@ -284,7 +282,6 @@ const Edituser: React.FC = () => {
               />
             </div>
 
-            {/* Refresh */}
             <button
               onClick={() => fetchProfiles(page)}
               disabled={loading}
@@ -318,7 +315,6 @@ const Edituser: React.FC = () => {
 
         {/* ── Table ── */}
         <div className="ap-animate rounded-2xl border border-gray-100 shadow-sm overflow-hidden" style={{ animationDelay: ".1s" }}>
-          {/* Table header gradient strip */}
           <div className="h-1 w-full teal-gradient" />
           <table className="w-full text-sm border-collapse">
             <thead>
@@ -457,12 +453,6 @@ const Edituser: React.FC = () => {
 
                 <Section label="Personal Info" />
 
-                {/* <Field label="Profile Photo URL" full>
-                  <input className={inputCls} value={form.profilePhoto} onChange={setField("profilePhoto")} placeholder="https://example.com/photo.jpg" />
-                </Field>
-                <Field label="NID Photo / Reference" full>
-                  <input className={inputCls} value={form.nidPhoto} onChange={setField("nidPhoto")} placeholder="URL or reference text" />
-                </Field> */}
                 <Field label="Bio" full>
                   <textarea className={inputCls + " resize-y min-h-[70px]"} value={form.bio} onChange={setField("bio")} placeholder="Short bio…" />
                 </Field>
@@ -487,7 +477,6 @@ const Edituser: React.FC = () => {
 
                 <Section label="Building & Flat Assignment" />
 
-                {/* Building */}
                 <Field label="Building">
                   <div className="relative">
                     <select className={selectCls} value={form.buildingId} onChange={onBuildingChange} disabled={buildingsLoading}>
@@ -498,7 +487,6 @@ const Edituser: React.FC = () => {
                   </div>
                 </Field>
 
-                {/* Flat */}
                 <Field label="Flat">
                   <div className="relative">
                     <select
