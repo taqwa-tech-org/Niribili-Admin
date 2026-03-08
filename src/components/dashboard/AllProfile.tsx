@@ -1,96 +1,183 @@
 import React, { useEffect, useState } from "react";
 import useAxiosSecure from "@/AllHooks/useAxiosSecure";
 import { Button } from "@/components/ui/button";
-import {
-  X,
-  User,
-  Phone,
-  Mail,
-  Shield,
-  MapPin,
-  CreditCard,
-  Info,
-} from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import Swal from "sweetalert2";
 
+// ─── Types ───────────────────────────────────────────────────────────────────
 interface ProfileItem {
   _id: string;
-  userId: any;
+  userId: {
+    _id: string;
+    name: string;
+    email: string;
+    phone: string;
+    role?: string;
+  };
   profilePhoto?: string | null;
   nidPhoto?: string | null;
   guardianName?: string | null;
   guardianPhone?: string | null;
   guardianRelation?: string | null;
+  emergencyContact?: string | null;
   whatsappNumber?: string | null;
   accountStatus?: string | null;
-  buildingId?: any;
-  flatId?: any;
+  buildingId?: { _id: string; name: string } | null;
+  flatId?: { _id: string; name: string } | null;
   room?: string | null;
   bio?: string | null;
   role?: string | null;
   isDeleted?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
 }
 
+interface Meta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+type TabKey = "pending" | "process" | "approve" | "deleted";
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+const LIMIT = 50;
+
+const TAB_CONFIG: { key: TabKey; label: string; desc: string; color: string }[] = [
+  { key: "pending", label: "Pending",    desc: "Awaiting review",    color: "text-yellow-600" },
+  { key: "process", label: "In Process", desc: "Under verification", color: "text-blue-600"   },
+  { key: "approve", label: "Approved",   desc: "Active residents",   color: "text-green-600"  },
+  { key: "deleted", label: "Deleted",    desc: "Removed accounts",   color: "text-red-500"    },
+];
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 const AllProfile: React.FC = () => {
   const axiosSecure = useAxiosSecure();
 
-  const [profiles, setProfiles] = useState<ProfileItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [tab, setTab] =
-    useState<"pending" | "process" | "approve" | "deleted">("pending");
-  const [search, setSearch] = useState("");
-  const [selectedProfile, setSelectedProfile] =
-    useState<ProfileItem | null>(null);
-  const [updating, setUpdating] = useState(false);
+  const [profiles, setProfiles]           = useState<ProfileItem[]>([]);
+  const [meta, setMeta]                   = useState<Meta>({ total: 0, page: 1, limit: LIMIT, totalPages: 1 });
+  const [loading, setLoading]             = useState(false);
+  const [tab, setTab]                     = useState<TabKey>("pending");
+  const [search, setSearch]               = useState("");
+  const [searchInput, setSearchInput]     = useState("");
+  const [page, setPage]                   = useState(1);
+  const [selectedProfile, setSelectedProfile] = useState<ProfileItem | null>(null);
+  const [updating, setUpdating]           = useState(false);
 
-  const fetchProfiles = async () => {
+  // ── Fetch ──────────────────────────────────────────────────────────────────
+  const fetchProfiles = async (currentPage: number, currentTab: TabKey, currentSearch: string) => {
     try {
       setLoading(true);
-      const res = await axiosSecure.get("/profile");
-      setProfiles(res.data?.data || []);
+
+      const params: Record<string, any> = {
+        page: currentPage,
+        limit: LIMIT,
+      };
+
+      if (currentSearch.trim()) {
+        params.search = currentSearch.trim();
+      }
+
+      if (currentTab === "deleted") {
+        const res = await axiosSecure.get("/user/deleted/all", { params });
+
+        if (res.data?.success) {
+          const users = res.data.data.users || [];
+          const mappedResults: ProfileItem[] = users.map((u: any) => {
+            const profile = u.profile || {};
+            return {
+              _id: profile._id || u._id,
+              userId: {
+                _id: u._id,
+                name: u.name,
+                email: u.email,
+                phone: u.phone,
+                role: u.role,
+              },
+              isDeleted: u.isDeleted,
+              profilePhoto: profile.profilePhoto,
+              nidPhoto: profile.nidPhoto,
+              guardianName: profile.guardianName,
+              guardianPhone: profile.guardianPhone,
+              guardianRelation: profile.guardianRelation,
+              emergencyContact: profile.emergencyContact,
+              whatsappNumber: profile.whatsappNumber,
+              accountStatus: profile.accountStatus,
+              buildingId: profile.buildingId,
+              flatId: profile.flatId,
+              room: profile.room,
+              bio: profile.bio,
+              role: profile.role || u.role,
+            };
+          });
+
+          setProfiles(mappedResults);
+          setMeta(res.data.data.meta || { total: 0, page: 1, limit: LIMIT, totalPages: 1 });
+        } else {
+          setProfiles([]);
+        }
+      } else {
+        params.accountStatus = currentTab; // "pending" | "process" | "approve"
+        params.isDeleted = false;
+
+        const res = await axiosSecure.get("/profile", { params });
+
+        if (res.data?.success) {
+          const results: ProfileItem[] = res.data.data.results || [];
+
+          const filtered = results.filter(
+            (p) =>
+              p.isDeleted !== true &&
+              p.accountStatus?.toLowerCase() === currentTab
+          );
+
+          setProfiles(filtered);
+          setMeta(res.data.data.meta || { total: 0, page: 1, limit: LIMIT, totalPages: 1 });
+        } else {
+          setProfiles([]);
+        }
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Fetch error:", err);
+      setProfiles([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Effect ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    fetchProfiles();
-  }, []);
+    fetchProfiles(page, tab, search);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, tab, search]);
 
-  const filteredProfiles = profiles
-    .filter((p) => {
-      if (tab === "deleted") return p.isDeleted === true;
+  // ── Tab change ────────────────────────────────────────────────────────────
+  const handleTabChange = (newTab: TabKey) => {
+    if (newTab === tab) return;
+    // Reset all, then change tab — React batches into one render → one fetch
+    setSearchInput("");
+    setSearch("");
+    setPage(1);
+    setTab(newTab);
+  };
 
-      const status = (p.accountStatus || "").toLowerCase();
-      if (tab === "approve") return status === "approve";
-      return status === tab && !p.isDeleted;
-    })
-    .filter((p) => {
-      if (!search) return true;
-      const name = p.userId?.name?.toLowerCase() || "";
-      const phone = p.whatsappNumber || "";
-      return (
-        name.includes(search.toLowerCase()) ||
-        phone.includes(search.toLowerCase())
-      );
-    });
+  // ── Search ─────────────────────────────────────────────────────────────────
+  const handleSearch = () => {
+    setPage(1);
+    setSearch(searchInput);
+  };
 
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") handleSearch();
+  };
+
+  // ── Approve ───────────────────────────────────────────────────────────────
   const handleApproveUser = async () => {
     if (!selectedProfile) return;
-
-    const profileId = selectedProfile._id;
-
     try {
       setUpdating(true);
-
-      await axiosSecure.patch(`/profile/${profileId}/status`, {
+      await axiosSecure.patch(`/profile/${selectedProfile._id}/status`, {
         accountStatus: "approve",
       });
-
       Swal.fire({
         icon: "success",
         title: "Approved",
@@ -98,57 +185,75 @@ const AllProfile: React.FC = () => {
         timer: 1500,
         showConfirmButton: false,
       });
-
       setSelectedProfile(null);
-      fetchProfiles();
+      fetchProfiles(page, tab, search);
     } catch (err: any) {
-      Swal.fire(
-        "Error",
-        err?.response?.data?.message || "Failed to approve",
-        "error"
-      );
+      Swal.fire("Error", err?.response?.data?.message || "Failed to approve", "error");
     } finally {
       setUpdating(false);
     }
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-3xl font-extrabold">Resident Profiles</h2>
-
-        <input
-          className="px-4 py-2 border rounded-xl"
-          placeholder="Search name / phone"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="flex gap-2">
+          <input
+            className="px-4 py-2 border rounded-xl text-sm"
+            placeholder="Search name / phone..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+          />
+          <Button onClick={handleSearch} variant="outline">Search</Button>
+        </div>
       </div>
 
-      <div className="flex gap-2">
-        {["pending", "process", "approve", "deleted"].map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t as any)}
-            className={`px-4 py-2 rounded-xl font-bold capitalize ${
-              tab === t
-                ? "bg-primary text-white"
-                : "bg-muted text-foreground"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+      {/* TABS */}
+      <div className="flex gap-2 flex-wrap">
+        {TAB_CONFIG.map(({ key, label, desc, color }) => {
+          const isActive = tab === key;
+          return (
+            <button
+              key={key}
+              onClick={() => handleTabChange(key)}
+              className={`flex flex-col items-start px-4 py-2.5 rounded-xl text-sm transition-all border ${
+                isActive
+                  ? "bg-primary text-white border-primary shadow-md"
+                  : "bg-muted text-foreground border-transparent hover:border-border hover:bg-muted/80"
+              }`}
+            >
+              <span className="flex items-center gap-1.5 font-bold">
+                {label}
+                {isActive && meta.total > 0 && (
+                  <span className="bg-white/25 text-xs px-1.5 py-0.5 rounded-full font-semibold">
+                    {/* {meta.total} */}
+                  </span>
+                )}
+              </span>
+              <span className={`text-xs mt-0.5 ${isActive ? "text-white/70" : color}`}>
+                {desc}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
+      {/* TABLE */}
       <div className="border rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-muted">
             <tr>
+              <th className="p-4 text-left">#</th>
               <th className="p-4 text-left">User</th>
-              <th className="p-4">Role</th>
-              <th className="p-4">Contact</th>
-              <th className="p-4">Status</th>
+              <th className="p-4 text-left">Role</th>
+              <th className="p-4 text-left">Contact</th>
+              <th className="p-4 text-left">Building / Flat</th>
+              <th className="p-4 text-left">Status</th>
               <th className="p-4 text-right">Action</th>
             </tr>
           </thead>
@@ -156,27 +261,84 @@ const AllProfile: React.FC = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="p-6 text-center">
-                  Loading...
+                <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    Loading...
+                  </div>
                 </td>
               </tr>
-            ) : filteredProfiles.length === 0 ? (
+            ) : profiles.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-6 text-center">
-                  No data found
+                <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                  No{" "}
+                  <span className="font-semibold">
+                    {TAB_CONFIG.find((t) => t.key === tab)?.label}
+                  </span>{" "}
+                  profiles found.
                 </td>
               </tr>
             ) : (
-              filteredProfiles.map((p) => (
-                <tr key={p._id} className="border-t">
-                  <td className="p-4 font-bold">{p.userId?.name}</td>
-                  <td className="p-4 capitalize">{p.role}</td>
-                  <td className="p-4">{p.whatsappNumber}</td>
-                  <td className="p-4 font-bold capitalize">
-                    {p.isDeleted ? "deleted" : p.accountStatus}
+              profiles.map((p, idx) => (
+                <tr
+                  key={p._id}
+                  className={`border-t transition-colors ${
+                    p.isDeleted
+                      ? "bg-red-50/50 hover:bg-red-50"
+                      : "hover:bg-muted/30"
+                  }`}
+                >
+                  <td className="p-4 text-muted-foreground text-xs">
+                    {(page - 1) * LIMIT + idx + 1}
                   </td>
+
+                  {/* User */}
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      {p.profilePhoto ? (
+                        <img
+                          src={p.profilePhoto}
+                          alt={p.userId?.name}
+                          className="w-8 h-8 rounded-full object-cover border"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
+                          {p.userId?.name?.charAt(0)?.toUpperCase() || "?"}
+                        </div>
+                      )}
+                      <div>
+                        <p className={`font-bold ${p.isDeleted ? "line-through text-muted-foreground" : ""}`}>
+                          {p.userId?.name || "-"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{p.userId?.email || "-"}</p>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className="p-4 capitalize">{p.role || p.userId?.role || "-"}</td>
+                  <td className="p-4">{p.whatsappNumber || p.userId?.phone || "-"}</td>
+
+                  {/* Building / Flat */}
+                  <td className="p-4">
+                    {p.buildingId?.name ? (
+                      <span>
+                        {p.buildingId.name}
+                        {p.flatId?.name && (
+                          <span className="text-muted-foreground"> / {p.flatId.name}</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">Not assigned</span>
+                    )}
+                  </td>
+
+                  {/* Status */}
+                  <td className="p-4">
+                    <StatusBadge isDeleted={p.isDeleted} accountStatus={p.accountStatus} />
+                  </td>
+
                   <td className="p-4 text-right">
-                    <Button onClick={() => setSelectedProfile(p)}>
+                    <Button size="sm" variant={p.isDeleted ? "outline" : "default"} onClick={() => setSelectedProfile(p)}>
                       View Details
                     </Button>
                   </td>
@@ -187,84 +349,115 @@ const AllProfile: React.FC = () => {
         </table>
       </div>
 
-      {/* ================= MODAL ================= */}
+      {/* PAGINATION */}
+      {!loading && meta.totalPages > 1 && (
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <p className="text-sm text-muted-foreground">
+            Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, meta.total)} of {meta.total} profiles
+          </p>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline" size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="w-4 h-4" /> Prev
+            </Button>
+
+            <div className="flex gap-1">
+              {Array.from({ length: meta.totalPages }, (_, i) => i + 1)
+                .filter((n) => n === 1 || n === meta.totalPages || Math.abs(n - page) <= 1)
+                .reduce<(number | "...")[]>((acc, n, i, arr) => {
+                  if (i > 0 && (n as number) - (arr[i - 1] as number) > 1) acc.push("...");
+                  acc.push(n);
+                  return acc;
+                }, [])
+                .map((n, i) =>
+                  n === "..." ? (
+                    <span key={`dots-${i}`} className="px-2 py-1 text-muted-foreground text-sm">…</span>
+                  ) : (
+                    <button
+                      key={n}
+                      onClick={() => setPage(n as number)}
+                      className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                        page === n ? "bg-primary text-white" : "bg-muted hover:bg-muted/80"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  )
+                )}
+            </div>
+
+            <Button
+              variant="outline" size="sm"
+              disabled={page >= meta.totalPages}
+              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
+            >
+              Next <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* DETAIL MODAL */}
       {selectedProfile && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-          <div className="bg-white w-full max-w-4xl rounded-2xl p-6 relative">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-4xl rounded-2xl p-6 relative max-h-[90vh] overflow-y-auto shadow-2xl">
+
             <button
               onClick={() => setSelectedProfile(null)}
-              className="absolute right-4 top-4"
+              className="absolute right-4 top-4 hover:bg-muted rounded-lg p-1 transition-colors"
             >
-              <X />
+              <X className="w-5 h-5" />
             </button>
 
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold">Profile Details</h3>
-
-              <div className="flex items-center gap-3 mr-7">
-                <span className="font-bold capitalize">
-                  Status: {selectedProfile.accountStatus}
-                </span>
-
-                {selectedProfile.accountStatus === "process" && (
+            <div className="flex justify-between items-center mb-6 pr-8">
+              <div>
+                <h3 className="text-xl font-bold">Profile Details</h3>
+                <p className="text-sm text-muted-foreground">{selectedProfile.userId?.email}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <StatusBadge
+                  isDeleted={selectedProfile.isDeleted}
+                  accountStatus={selectedProfile.accountStatus}
+                />
+                {selectedProfile.accountStatus === "process" && !selectedProfile.isDeleted && (
                   <Button disabled={updating} onClick={handleApproveUser}>
-                    Approve
+                    {updating ? "Approving..." : "Approve User"}
                   </Button>
                 )}
               </div>
             </div>
 
-            {/* ===== Images Section (ONLY ADDITION) ===== */}
+            {/* Photos */}
             <div className="grid grid-cols-2 gap-6 mb-6">
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Profile Photo
-                </p>
-                {selectedProfile.profilePhoto ? (
-                  <img
-                    src={selectedProfile.profilePhoto}
-                    alt="Profile"
-                    className="w-full h-56 object-cover rounded-xl border"
-                  />
-                ) : (
-                  <p className="text-sm">No image</p>
-                )}
-              </div>
-
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">
-                  NID Photo
-                </p>
-                {selectedProfile.nidPhoto ? (
-                  <img
-                    src={selectedProfile.nidPhoto}
-                    alt="NID"
-                    className="w-full h-56 object-cover rounded-xl border"
-                  />
-                ) : (
-                  <p className="text-sm">No image</p>
-                )}
-              </div>
+              <ImageBlock label="Profile Photo" src={selectedProfile.profilePhoto} />
+              <ImageBlock label="NID Photo"     src={selectedProfile.nidPhoto} />
             </div>
 
-            {/* ===== Info Section (UNCHANGED) ===== */}
-            <div className="grid grid-cols-2 gap-6">
-              <DataField label="Name" value={selectedProfile.userId?.name} />
-              <DataField label="Email" value={selectedProfile.userId?.email} />
-              <DataField label="Phone" value={selectedProfile.userId?.phone} />
-              <DataField
-                label="Guardian"
-                value={selectedProfile.guardianName}
-              />
-              <DataField
-                label="Building"
-                value={selectedProfile.buildingId?.name}
-              />
-              <DataField
-                label="Flat / Room"
-                value={`${selectedProfile.flatId?.name} / ${selectedProfile.room}`}
-              />
-            </div>
+            <Section title="Personal Information">
+              <DataField label="Full Name"  value={selectedProfile.userId?.name} />
+              <DataField label="Email"      value={selectedProfile.userId?.email} />
+              <DataField label="Phone"      value={selectedProfile.userId?.phone} />
+              <DataField label="WhatsApp"   value={selectedProfile.whatsappNumber} />
+              <DataField label="Role"       value={selectedProfile.role || selectedProfile.userId?.role} />
+              <DataField label="Bio"        value={selectedProfile.bio} />
+            </Section>
+
+            <Section title="Guardian Information">
+              <DataField label="Guardian Name"     value={selectedProfile.guardianName} />
+              <DataField label="Guardian Phone"    value={selectedProfile.guardianPhone} />
+              <DataField label="Relation"          value={selectedProfile.guardianRelation} />
+              <DataField label="Emergency Contact" value={selectedProfile.emergencyContact} />
+            </Section>
+
+            <Section title="Residence Information" last>
+              <DataField label="Building" value={selectedProfile.buildingId?.name} />
+              <DataField label="Flat"     value={selectedProfile.flatId?.name} />
+              <DataField label="Room"     value={selectedProfile.room} />
+            </Section>
           </div>
         </div>
       )}
@@ -272,16 +465,70 @@ const AllProfile: React.FC = () => {
   );
 };
 
-const DataField = ({
-  label,
-  value,
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+/**
+ * isDeleted=true on the PROFILE takes priority over accountStatus.
+ * A deleted profile might still have accountStatus="process" — we show "Deleted".
+ */
+const statusStyles: Record<string, { label: string; className: string }> = {
+  pending: { label: "Pending",    className: "bg-yellow-100 text-yellow-700" },
+  process: { label: "In Process", className: "bg-blue-100 text-blue-700"    },
+  approve: { label: "Approved",   className: "bg-green-100 text-green-700"  },
+  deleted: { label: "Deleted",    className: "bg-red-100 text-red-600"      },
+};
+
+const StatusBadge = ({
+  isDeleted,
+  accountStatus,
 }: {
-  label: string;
-  value?: string | null;
+  isDeleted?: boolean;
+  accountStatus?: string | null;
+}) => {
+  const key    = isDeleted ? "deleted" : (accountStatus?.toLowerCase() ?? "");
+  const config = statusStyles[key] ?? {
+    label: accountStatus || "-",
+    className: "bg-muted text-muted-foreground",
+  };
+  return (
+    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${config.className}`}>
+      {config.label}
+    </span>
+  );
+};
+
+// ─── Section ──────────────────────────────────────────────────────────────────
+const Section = ({
+  title, children, last,
+}: {
+  title: string; children: React.ReactNode; last?: boolean;
 }) => (
+  <div className={last ? "mt-4" : "mb-6"}>
+    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 border-b pb-1">
+      {title}
+    </h4>
+    <div className="grid grid-cols-2 gap-4">{children}</div>
+  </div>
+);
+
+// ─── Data Field ───────────────────────────────────────────────────────────────
+const DataField = ({ label, value }: { label: string; value?: string | null }) => (
   <div>
-    <p className="text-xs text-muted-foreground">{label}</p>
-    <p className="font-bold">{value || "-"}</p>
+    <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+    <p className="font-semibold text-sm">{value || "-"}</p>
+  </div>
+);
+
+// ─── Image Block ──────────────────────────────────────────────────────────────
+const ImageBlock = ({ label, src }: { label: string; src?: string | null }) => (
+  <div>
+    <p className="text-xs text-muted-foreground mb-2">{label}</p>
+    {src ? (
+      <img src={src} alt={label} className="w-full h-56 object-cover rounded-xl border" />
+    ) : (
+      <div className="w-full h-56 rounded-xl border bg-muted flex items-center justify-center text-muted-foreground text-sm">
+        No image uploaded
+      </div>
+    )}
   </div>
 );
 
