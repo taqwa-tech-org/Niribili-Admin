@@ -56,7 +56,7 @@ const AllProfile: React.FC = () => {
   const [profiles, setProfiles]           = useState<ProfileItem[]>([]);
   const [meta, setMeta]                   = useState<Meta>({ total: 0, page: 1, limit: LIMIT, totalPages: 1 });
   const [loading, setLoading]             = useState(false);
-  const [tab, setTab]                     = useState<TabKey>("pending");
+  const [tab, setTab]                     = useState<TabKey>("approve");
   const [search, setSearch]               = useState("");
   const [searchInput, setSearchInput]     = useState("");
   const [page, setPage]                   = useState(1);
@@ -74,7 +74,9 @@ const AllProfile: React.FC = () => {
       };
 
       if (currentSearch.trim()) {
-        params.search = currentSearch.trim();
+        const searchValue = currentSearch.trim();
+        params.search = searchValue;
+        params.searchTerm = searchValue;
       }
 
       if (currentTab === "deleted") {
@@ -122,15 +124,9 @@ const AllProfile: React.FC = () => {
         const res = await axiosSecure.get("/profile", { params });
 
         if (res.data?.success) {
-          const results: ProfileItem[] = res.data.data.results || [];
+          const results: ProfileItem[] = res.data.data.profiles || res.data.data.results || [];
 
-          const filtered = results.filter(
-            (p) =>
-              p.isDeleted !== true &&
-              p.accountStatus?.toLowerCase() === currentTab
-          );
-
-          setProfiles(filtered);
+          setProfiles(results);
           setMeta(res.data.data.meta || { total: 0, page: 1, limit: LIMIT, totalPages: 1 });
         } else {
           setProfiles([]);
