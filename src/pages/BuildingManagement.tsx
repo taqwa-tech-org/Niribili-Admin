@@ -36,17 +36,18 @@ const BuildingManagement = () => {
     const [bRes, fRes, pRes] = await Promise.all([
       axiosSecure.get("/buildings"),
       axiosSecure.get("/flats"),
-      axiosSecure.get("/profile"),
+      axiosSecure.get("/profile?page=1&limit=100"),
     ]);
 
-    // Buildings
-    setBuildings(bRes.data?.data?.buildings || []);
+    // Buildings - API returns { data: [...] }
+    setBuildings(Array.isArray(bRes.data?.data) ? bRes.data.data : []);
 
-    // Flats
-    setFlats(fRes.data?.data || []);
+    // Flats - API returns { data: [...] }
+    setFlats(Array.isArray(fRes.data?.data) ? fRes.data.data : []);
 
-    // Profiles
-    setUsers(pRes.data?.data?.results || []);
+    // Profiles - API returns { data: { profiles/results: [...] } }
+    const profileData = pRes.data?.data?.profiles ?? pRes.data?.data?.results ?? [];
+    setUsers(Array.isArray(profileData) ? profileData : []);
 
   } catch (err) {
     console.error(err);
