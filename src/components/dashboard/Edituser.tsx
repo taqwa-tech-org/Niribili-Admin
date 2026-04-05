@@ -113,6 +113,7 @@ const Edituser: React.FC = () => {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
   const [search, setSearch]         = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [page, setPage]             = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal]           = useState(0);
@@ -127,14 +128,25 @@ const Edituser: React.FC = () => {
   const [buildingsLoading, setBuildingsLoading] = useState(false);
   const [flatsLoading, setFlatsLoading]         = useState(false);
 
-  const fetchProfiles = useCallback(async (pg: number) => {
+  const fetchProfiles = useCallback(async (pg: number, searchQuery: string = "") => {
     setLoading(true); setError(null);
     try {
-      const res = await axiosSecure.get(`/profile?page=${pg}&limit=50`);
+      const params: Record<string, string | number> = {
+        page: pg,
+        limit: 50,
+      };
+
+      const trimmedSearch = searchQuery.trim();
+      if (trimmedSearch) {
+        params.search = trimmedSearch;
+        params.searchTerm = trimmedSearch;
+      }
+
+      const res = await axiosSecure.get("/profile", { params });
       const meta    = res.data?.data?.meta ?? res.data?.meta ?? {};
       const results: Profile[] =
-        res.data?.data?.results ?? res.data?.data?.result ??
-        res.data?.results       ?? res.data?.result       ?? [];
+        res.data?.data?.profiles ?? res.data?.data?.results ?? res.data?.data?.result ??
+        res.data?.profiles       ?? res.data?.results       ?? res.data?.result       ?? [];
       setProfiles(results);
       setTotalPages(meta.totalPages ?? 1);
       setTotal(meta.total ?? results.length);
@@ -144,7 +156,16 @@ const Edituser: React.FC = () => {
     } finally { setLoading(false); }
   }, [axiosSecure]);
 
-  useEffect(() => { fetchProfiles(page); }, [page]);
+  useEffect(() => { fetchProfiles(page, search); }, [page, search, fetchProfiles]);
+
+  const handleSearch = () => {
+    setPage(1);
+    setSearch(searchInput);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") handleSearch();
+  };
 
   const fetchBuildings = useCallback(async () => {
     if (buildings.length > 0) return;
@@ -152,7 +173,9 @@ const Edituser: React.FC = () => {
     try {
       const res = await axiosSecure.get("/buildings");
       setBuildings(res.data?.data?.buildings ?? []);
-    } catch {}
+    } catch (err) {
+      console.error("Failed to load buildings:", err);
+    }
     finally { setBuildingsLoading(false); }
   }, [axiosSecure, buildings.length]);
 
@@ -165,7 +188,9 @@ const Edituser: React.FC = () => {
         ? res.data.data
         : res.data?.data?.flats ?? res.data?.flats ?? [];
       setFlats(list);
-    } catch {}
+    } catch (err) {
+      console.error("Failed to load flats:", err);
+    }
     finally { setFlatsLoading(false); }
   }, [axiosSecure]);
 
@@ -211,7 +236,7 @@ const Edituser: React.FC = () => {
     try {
       await axiosSecure.patch(`/profile/${editing._id}`, payload);
       setSaveMsg({ ok: true, text: "Profile updated successfully!" });
-      fetchProfiles(page);
+      fetchProfiles(page, search);
       setTimeout(closeEdit, 1400);
     } catch (err: any) {
       setSaveMsg({ ok: false, text: err?.response?.data?.message ?? "Update failed." });
@@ -224,16 +249,7 @@ const Edituser: React.FC = () => {
   const statusClass = (s: string) =>
     STATUS_STYLES[s] ?? "bg-gray-100 text-gray-600 border border-gray-200";
 
-  const filtered = profiles.filter(p => {
-    if (p.accountStatus !== "approve" && p.accountStatus !== "process") return false;
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      (p.userId?.name ?? "").toLowerCase().includes(q) ||
-      (p.userId?.email ?? "").toLowerCase().includes(q) ||
-      (p.userId?.phone ?? "").toLowerCase().includes(q)
-    );
-  });
+  const filtered = profiles;
 
   /* ════════════════════════════════════════════════════════ */
   return (
@@ -275,15 +291,24 @@ const Edituser: React.FC = () => {
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
               </svg>
               <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
                 placeholder="Name, email, phone…"
                 className="bg-transparent border-none outline-none text-sm text-gray-700 placeholder:text-gray-300 w-full"
               />
             </div>
 
             <button
-              onClick={() => fetchProfiles(page)}
+              onClick={handleSearch}
+              disabled={loading}
+              className="flex items-center gap-2 h-10 px-4 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:border-teal-300 transition disabled:opacity-40"
+            >
+              Search
+            </button>
+
+            <button
+              onClick={() => fetchProfiles(page, search)}
               disabled={loading}
               className="flex items-center gap-2 h-10 px-4 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:border-teal-300 transition disabled:opacity-40"
             >

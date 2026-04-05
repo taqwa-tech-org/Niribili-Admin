@@ -54,12 +54,12 @@ const UserManagement = () => {
   const fetchData = useCallback(async () => {
     try {
       const [uRes, bRes, fRes] = await Promise.all([
-        axiosSecure.get("/profile?page=1&limit=50"),
+        axiosSecure.get("/profile?page=1&limit=100"),
         axiosSecure.get("/buildings"),
         axiosSecure.get("/flats"),
       ]);
 
-      const allUsers: UserProfile[] = uRes.data?.data?.results || [];
+      const allUsers: UserProfile[] = uRes.data?.data?.profiles ?? uRes.data?.data?.results ?? [];
 
       const activeUsers = allUsers.filter((user) => {
         const isUserDeleted = user.isDeleted || user.userId?.isDeleted;
@@ -68,8 +68,8 @@ const UserManagement = () => {
       });
 
       setUsers(activeUsers);
-      setBuildings(bRes.data?.data?.buildings || []);
-      setFlats(fRes.data?.data || []);
+      setBuildings(Array.isArray(bRes.data?.data) ? bRes.data.data : []);
+      setFlats(Array.isArray(fRes.data?.data) ? fRes.data.data : []);
     } catch (err) {
       console.error("Fetch Error:", err);
       Swal.fire("Error", "Data load failed", "error");

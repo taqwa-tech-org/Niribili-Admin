@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import useAxiosSecure from "@/AllHooks/useAxiosSecure";
 
 interface User {
@@ -56,78 +56,79 @@ const UserTransaction = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [filterType, setFilterType] = useState<FilterType>("all");
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalTransactions, setTotalTransactions] = useState(0);
 
   /* =========================
-     Fetch ALL transactions once
+     Fetch transactions from backend
      ========================= */
-  const fetchAllTransactions = async () => {
+  const fetchTransactions = useCallback(async (page: number, type: FilterType, query: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      const res = await axiosSecure.get(
-        `/wallet/admin/all-transactions?status=completed&limit=99999`
-      );
+      const params: Record<string, string | number> = {
+        status: "completed",
+        page,
+        limit: ITEMS_PER_PAGE,
+      };
 
-      const data = res.data?.data?.transactions || [];
+      if (type !== "all") {
+        params.type = type;
+      }
+
+      const trimmedQuery = query.trim();
+      if (trimmedQuery) {
+        params.search = trimmedQuery;
+        params.searchTerm = trimmedQuery;
+      }
+
+      const res = await axiosSecure.get("/wallet/admin/all-transactions", { params });
+
+      const meta = res.data?.data?.meta ?? {};
+      const data: Transaction[] =
+        res.data?.data?.transactions ??
+        res.data?.data?.results ??
+        res.data?.transactions ??
+        res.data?.results ??
+        [];
       setAllTransactions(data);
+      setTotalPages(meta.totalPages ?? 1);
+      setTotalTransactions(meta.total ?? data.length);
     } catch (err: any) {
       setError(err.message || "Failed to fetch transactions");
+      setAllTransactions([]);
+      setTotalPages(1);
+      setTotalTransactions(0);
     } finally {
       setLoading(false);
     }
+  }, [axiosSecure]);
+
+  useEffect(() => {
+    fetchTransactions(currentPage, filterType, searchQuery);
+  }, [currentPage, filterType, searchQuery, fetchTransactions]);
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    setSearchQuery(searchInput);
   };
 
-  useEffect(() => {
-    fetchAllTransactions();
-  }, []);
-
-  /* =========================
-     Client-side filter by type
-     ========================= */
-  const typeFiltered = useMemo(() => {
-    if (filterType === "all") return allTransactions;
-    return allTransactions.filter((t) => t.type === filterType);
-  }, [allTransactions, filterType]);
-
-  /* =========================
-     Client-side search across ALL data
-     ========================= */
-  const filteredTransactions = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return typeFiltered;
-    return typeFiltered.filter(
-      (t) =>
-        t.userId?.name?.toLowerCase().includes(q) ||
-        t.userId?.email?.toLowerCase().includes(q)
-    );
-  }, [typeFiltered, searchQuery]);
-
-  // ✅ Reset to page 1 when search or filter changes
-  useEffect(() => {
+  const clearSearch = () => {
+    setSearchInput("");
+    setSearchQuery("");
     setCurrentPage(1);
-  }, [searchQuery, filterType]);
+  };
 
-  /* =========================
-     Client-side pagination
-     ========================= */
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE)
-  );
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") handleSearch();
+  };
 
-  const paginatedTransactions = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredTransactions.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredTransactions, currentPage]);
-
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE + 1;
-  const endIndex = Math.min(
-    currentPage * ITEMS_PER_PAGE,
-    filteredTransactions.length
-  );
+  const startIndex = totalTransactions === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const endIndex = Math.min(currentPage * ITEMS_PER_PAGE, totalTransactions);
 
   /* =========================
      Helpers
@@ -196,7 +197,7 @@ const UserTransaction = () => {
         <div className="bg-white rounded-lg p-8 shadow-lg">
           <p className="text-red-600 text-lg font-semibold">Error: {error}</p>
           <button
-            onClick={fetchAllTransactions}
+            onClick={() => fetchTransactions(currentPage, filterType, searchQuery)}
             className="mt-4 px-6 py-2 bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] text-white rounded-lg hover:opacity-90 transition"
           >
             Retry
@@ -215,7 +216,7 @@ const UserTransaction = () => {
             User Balance Transactions
           </h1>
           <p className="text-gray-600">
-            Total Transactions: {allTransactions.length}
+            Total Transactions: {totalTransactions}
           </p>
         </div>
 
@@ -224,9 +225,10 @@ const UserTransaction = () => {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search by name or email across all transactions..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name or email..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
               className="w-full px-5 py-3 pl-12 border-2 border-gray-300 rounded-lg focus:border-[hsl(168,80%,32%)] focus:outline-none transition-colors text-gray-700"
             />
             <svg
@@ -242,9 +244,9 @@ const UserTransaction = () => {
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
             </svg>
-            {searchQuery && (
+            {searchInput && (
               <button
-                onClick={() => setSearchQuery("")}
+                onClick={clearSearch}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 <svg
@@ -263,10 +265,18 @@ const UserTransaction = () => {
               </button>
             )}
           </div>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              onClick={handleSearch}
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] text-white text-sm font-semibold hover:opacity-90 transition"
+            >
+              Search
+            </button>
+          </div>
           {searchQuery && (
             <p className="mt-2 text-sm text-gray-600">
-              Found {filteredTransactions.length} result
-              {filteredTransactions.length !== 1 ? "s" : ""}
+              Found {totalTransactions} result
+              {totalTransactions !== 1 ? "s" : ""}
             </p>
           )}
         </div>
@@ -277,7 +287,10 @@ const UserTransaction = () => {
             {(["all", "deposit", "deduct"] as FilterType[]).map((type) => (
               <button
                 key={type}
-                onClick={() => setFilterType(type)}
+                onClick={() => {
+                  setCurrentPage(1);
+                  setFilterType(type);
+                }}
                 className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
                   filterType === type
                     ? type === "all"
@@ -300,7 +313,7 @@ const UserTransaction = () => {
 
         {/* Transactions List */}
         <div className="space-y-4">
-          {paginatedTransactions.length === 0 ? (
+          {allTransactions.length === 0 ? (
             <div className="bg-white rounded-xl shadow-lg p-8 text-center">
               <p className="text-gray-500 text-lg">
                 {searchQuery
@@ -309,7 +322,7 @@ const UserTransaction = () => {
               </p>
             </div>
           ) : (
-            paginatedTransactions.map((transaction) => (
+            allTransactions.map((transaction) => (
               <div
                 key={transaction._id}
                 className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
@@ -428,7 +441,7 @@ const UserTransaction = () => {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-gray-600">
                 Showing {startIndex} to {endIndex} of{" "}
-                {filteredTransactions.length} transactions
+                {totalTransactions} transactions
               </div>
 
               <div className="flex items-center gap-2">
