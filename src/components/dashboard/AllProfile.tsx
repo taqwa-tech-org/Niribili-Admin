@@ -22,12 +22,23 @@ interface ProfileItem {
   emergencyContact?: string | null;
   whatsappNumber?: string | null;
   accountStatus?: string | null;
-  buildingId?: { _id: string; name: string } | null;
-  flatId?: { _id: string; name: string } | null;
+  buildingId?: string | { _id: string; name?: string } | null;
+  flatId?: string | { _id: string; name?: string } | null;
   room?: string | null;
   bio?: string | null;
   role?: string | null;
   isDeleted?: boolean;
+}
+
+interface Building {
+  _id: string;
+  name: string;
+}
+
+interface Flat {
+  _id: string;
+  name: string;
+  buildingId?: string;
 }
 
 interface Meta {
@@ -49,6 +60,17 @@ const TAB_CONFIG: { key: TabKey; label: string; desc: string; color: string }[] 
   { key: "deleted", label: "Deleted",    desc: "Removed accounts",   color: "text-red-500"    },
 ];
 
+const resolveName = (
+  value: string | { _id: string; name?: string } | null | undefined,
+  list: { _id: string; name: string }[]
+) => {
+  if (!value) return undefined;
+  if (typeof value === "object") {
+    return value.name || list.find((item) => item._id === value._id)?.name;
+  }
+  return list.find((item) => item._id === value)?.name;
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 const AllProfile: React.FC = () => {
   const axiosSecure = useAxiosSecure();
@@ -56,12 +78,34 @@ const AllProfile: React.FC = () => {
   const [profiles, setProfiles]           = useState<ProfileItem[]>([]);
   const [meta, setMeta]                   = useState<Meta>({ total: 0, page: 1, limit: LIMIT, totalPages: 1 });
   const [loading, setLoading]             = useState(false);
+  const [buildings, setBuildings]         = useState<Building[]>([]);
+  const [flats, setFlats]                 = useState<Flat[]>([]);
   const [tab, setTab]                     = useState<TabKey>("approve");
   const [search, setSearch]               = useState("");
   const [searchInput, setSearchInput]     = useState("");
   const [page, setPage]                   = useState(1);
   const [selectedProfile, setSelectedProfile] = useState<ProfileItem | null>(null);
   const [updating, setUpdating]           = useState(false);
+
+  // ── Fetch Buildings/Flats ───────────────────────────────────────────────
+  useEffect(() => {
+    const fetchBuildingsAndFlats = async () => {
+      try {
+        const [bRes, fRes] = await Promise.all([
+          axiosSecure.get("/buildings"),
+          axiosSecure.get("/flats"),
+        ]);
+        setBuildings(Array.isArray(bRes.data?.data) ? bRes.data.data : []);
+        setFlats(Array.isArray(fRes.data?.data) ? fRes.data.data : []);
+      } catch (err) {
+        console.error("Fetch buildings/flats error:", err);
+        setBuildings([]);
+        setFlats([]);
+      }
+    };
+
+    fetchBuildingsAndFlats();
+  }, [axiosSecure]);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchProfiles = async (currentPage: number, currentTab: TabKey, currentSearch: string) => {
@@ -275,7 +319,10 @@ const AllProfile: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              profiles.map((p, idx) => (
+              profiles.map((p, idx) => {
+                const buildingName = resolveName(p.buildingId, buildings);
+                const flatName = resolveName(p.flatId, flats);
+                return (
                 <tr
                   key={p._id}
                   className={`border-t transition-colors ${
@@ -316,13 +363,15 @@ const AllProfile: React.FC = () => {
 
                   {/* Building / Flat */}
                   <td className="p-4">
-                    {p.buildingId?.name ? (
+                    {buildingName ? (
                       <span>
-                        {p.buildingId.name}
-                        {p.flatId?.name && (
-                          <span className="text-muted-foreground"> / {p.flatId.name}</span>
+                        {buildingName}
+                        {flatName && (
+                          <span className="text-muted-foreground"> / {flatName}</span>
                         )}
                       </span>
+                    ) : flatName ? (
+                      <span>{flatName}</span>
                     ) : (
                       <span className="text-muted-foreground text-xs">Not assigned</span>
                     )}
@@ -339,7 +388,8 @@ const AllProfile: React.FC = () => {
                     </Button>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
@@ -450,8 +500,8 @@ const AllProfile: React.FC = () => {
             </Section>
 
             <Section title="Residence Information" last>
-              <DataField label="Building" value={selectedProfile.buildingId?.name} />
-              <DataField label="Flat"     value={selectedProfile.flatId?.name} />
+              <DataField label="Building" value={resolveName(selectedProfile.buildingId, buildings)} />
+              <DataField label="Flat"     value={resolveName(selectedProfile.flatId, flats)} />
               <DataField label="Room"     value={selectedProfile.room} />
             </Section>
           </div>

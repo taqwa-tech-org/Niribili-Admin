@@ -20,8 +20,8 @@ interface Profile {
   guardianPhone: string | null;
   guardianRelation: string | null;
   emergencyContact: string | null;
-  buildingId: string | null;
-  flatId: string | null;
+  buildingId: string | { _id: string; name?: string } | null;
+  flatId: string | { _id: string; name?: string } | null;
   room: string | null;
   whatsappNumber: string | null;
   accountStatus: string;
@@ -172,7 +172,10 @@ const Edituser: React.FC = () => {
     setBuildingsLoading(true);
     try {
       const res = await axiosSecure.get("/buildings");
-      setBuildings(res.data?.data?.buildings ?? []);
+      const list: Building[] = Array.isArray(res.data?.data)
+        ? res.data.data
+        : res.data?.data?.buildings ?? res.data?.buildings ?? [];
+      setBuildings(list);
     } catch (err) {
       console.error("Failed to load buildings:", err);
     }
@@ -196,6 +199,10 @@ const Edituser: React.FC = () => {
 
   const openEdit = (p: Profile) => {
     setSaveMsg(null); setFlats([]); setEditing(p);
+    const buildingId =
+      typeof p.buildingId === "string" ? p.buildingId : p.buildingId?._id || "";
+    const flatId =
+      typeof p.flatId === "string" ? p.flatId : p.flatId?._id || "";
     setForm({
       profilePhoto:     p.profilePhoto     ?? "",
       nidPhoto:         p.nidPhoto         ?? "",
@@ -203,15 +210,15 @@ const Edituser: React.FC = () => {
       guardianPhone:    p.guardianPhone    ?? "",
       guardianRelation: p.guardianRelation ?? "",
       emergencyContact: p.emergencyContact ?? "",
-      buildingId:       typeof p.buildingId === "string" ? p.buildingId : "",
-      flatId:           typeof p.flatId    === "string" ? p.flatId    : "",
+      buildingId,
+      flatId,
       room:             p.room             ?? "",
       accountStatus:    p.accountStatus    ?? "pending",
       whatsappNumber:   p.whatsappNumber   ?? "",
       bio:              p.bio              ?? "",
     });
     fetchBuildings();
-    if (typeof p.buildingId === "string" && p.buildingId) fetchFlats(p.buildingId);
+    if (buildingId) fetchFlats(buildingId);
   };
 
   const closeEdit = () => { setEditing(null); setSaveMsg(null); setFlats([]); };
