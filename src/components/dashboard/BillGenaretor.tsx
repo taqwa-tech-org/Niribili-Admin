@@ -45,14 +45,13 @@ const BillingGenerator: React.FC = () => {
   const totalQuantity = summary.reduce((sum, s) => sum + (s.totalQuantity || 0), 0);
   const totalPrice = summary.reduce((sum, s) => sum + (s.totalPrice || 0), 0);
 
-
-
   const fetchSummary = useCallback(async (d: string) => {
     try {
       setLoading(true);
       setError(null);
       const res = await axiosSecure.get(`/meals/admin/summary/date/${d}`);
       setSummary(res.data?.data || []);
+      
     } catch (err: unknown) {
       let message = "Failed to load summary";
       if (err && typeof err === "object") {

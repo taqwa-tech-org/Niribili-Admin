@@ -6,6 +6,8 @@ import {
   Filter,
   Save,
   Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -44,6 +46,34 @@ const getTomorrowISO = () => {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+};
+
+const getTodayISO = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const addDaysToISO = (isoDate: string, days: number): string => {
+  const d = new Date(isoDate + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const formatDateForDisplay = (isoDate: string): string => {
+  const d = new Date(isoDate + "T00:00:00");
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  };
+  return d.toLocaleDateString("bn-BD", options);
 };
 
 const MealControl: React.FC = () => {
@@ -145,20 +175,83 @@ const MealControl: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold font-display text-gradient flex items-center gap-3">
-            <UtensilsCrossed className="w-8 h-8 text-primary" /> মিল কন্ট্রোল প্যানেল
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            তারিখ (YYYY-MM-DD): {date}{" "}
-            <span className="text-xs text-muted-foreground ml-2">(আগামীকাল)</span>
-          </p>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold font-display text-gradient flex items-center gap-3">
+              <UtensilsCrossed className="w-8 h-8 text-primary" /> মিল কন্ট্রোল প্যানেল
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {formatDateForDisplay(date)}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" className="gap-2" asChild>
+              <Link to="/admin-dashboard/lock-expired">Lock Expired</Link>
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="gap-2" asChild>
-            <Link to="/admin-dashboard/lock-expired">Lock Expired</Link>
-          </Button>
+
+        {/* Date Picker & Navigation */}
+        <div className="glass p-4 rounded-2xl border border-border/50">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            {/* Date Navigation Buttons */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDate(addDaysToISO(date, -1))}
+                className="gap-2"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                গতকাল
+              </Button>
+              <div className="px-4 py-2 bg-secondary/50 rounded-lg min-w-max">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="bg-transparent outline-none font-medium text-sm"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDate(addDaysToISO(date, 1))}
+                className="gap-2"
+              >
+                আগামীকাল
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Quick Date Shortcuts */}
+            <div className="flex flex-wrap gap-2 md:ml-auto">
+              <Button
+                variant={date === getTodayISO() ? "default" : "secondary"}
+                size="sm"
+                onClick={() => setDate(getTodayISO())}
+              >
+                আজ
+              </Button>
+              <Button
+                variant={date === getTomorrowISO() ? "default" : "secondary"}
+                size="sm"
+                onClick={() => setDate(getTomorrowISO())}
+              >
+                আগামীকাল
+              </Button>
+              <Button
+                variant={
+                  date === addDaysToISO(getTodayISO(), 2) ? "default" : "secondary"
+                }
+                size="sm"
+                onClick={() => setDate(addDaysToISO(getTodayISO(), 2))}
+              >
+                পরের দিন
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
