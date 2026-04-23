@@ -103,10 +103,10 @@ const LockExpired: React.FC = () => {
         </div>
       )}
 
-      {/* Error State */}
+      {/* Error State - Green Color */}
       {error && !loading && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-4">
-          <p className="font-semibold">Error</p>
+        <div className="bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-400 rounded-lg p-4 flex flex-col items-center justify-center text-center gap-2">
+          <p className="font-semibold">বার্তা</p>
           <p className="text-sm">{error}</p>
         </div>
       )}
