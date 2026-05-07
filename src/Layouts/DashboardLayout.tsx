@@ -15,6 +15,7 @@ import {
   Users,
   FileText,
   ShieldCheck,
+  Settings2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,8 @@ const menuConfig: Record<Role, MenuItem[]> = {
     { icon: FileText, label: "বিল জেনারেটর", href: "/admin-dashboard/bill-generator" },
     { icon: FileText, label: "এডিট ইউজার", href: "/admin-dashboard/user" },
     { icon: FileText, label: "সব প্রোফাইল", href: "/admin-dashboard/Profile" },
-    {icon: FileText, label: "ব্যালান্স আপডেট", href: "/admin-dashboard/userbalance"}
+    { icon: FileText, label: "ব্যালান্স আপডেট", href: "/admin-dashboard/userbalance" },
+    { icon: Settings2, label: "মিল সেটিংস", href: "/admin-dashboard/meal-settings" },
   ],
   
   user: [
