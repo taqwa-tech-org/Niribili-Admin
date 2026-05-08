@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import useAxiosSecure from "@/AllHooks/useAxiosSecure";
 import Swal from "sweetalert2";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Search as SearchIcon, X as XIcon } from "lucide-react";
 
 interface WalletUser {
   _id: string;
@@ -26,6 +27,7 @@ interface Meta {
 }
 
 const PAGE_SIZE = 50;
+const SEARCH_DEBOUNCE_MS = 350;
 
 const AllUserWalletBalance: React.FC = () => {
   const axiosSecure = useAxiosSecure();
@@ -40,8 +42,10 @@ const AllUserWalletBalance: React.FC = () => {
   const [fetching, setFetching] = useState(false);
   const [page, setPage] = useState(1);
 
-  // ✅ Search only on current page (no API call)
-  const [search, setSearch] = useState("");
+  // Two search states: what the user is typing vs. what we've sent to the API.
+  // Debounced so we don't spam the API on every keystroke.
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const [selectedUser, setSelectedUser] = useState<WalletUser | null>(null);
   const [amount, setAmount] = useState<number>(0);
@@ -50,54 +54,70 @@ const AllUserWalletBalance: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   /* =========================
-     Server-side fetch
+     Debounce the search input
      ========================= */
-  const fetchWallets = useCallback(async (currentPage: number) => {
-    try {
-      setFetching(true);
-      setSearch(""); // ✅ clear search on page change
-
-      const res = await axiosSecure.get(
-        `/wallet/allUser/balance?page=${currentPage}&limit=${PAGE_SIZE}`
-      );
-
-      setWallets(res.data?.data?.wallets || []);
-      setMeta(
-        res.data?.data?.meta || {
-          total: 0,
-          page: currentPage,
-          limit: PAGE_SIZE,
-          totalPages: 1,
-        }
-      );
-    } catch (error: any) {
-      Swal.fire(
-        "Error",
-        error?.response?.data?.message || "Failed to load wallet data",
-        "error"
-      );
-      setWallets([]);
-    } finally {
-      setFetching(false);
-    }
-  }, [axiosSecure]);
-
   useEffect(() => {
-    fetchWallets(page);
-  }, [page]);
+    const t = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   /* =========================
-     Client-side search — current page only
+     Reset to page 1 whenever the *applied* search changes
      ========================= */
-  const filteredWallets = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return wallets;
-    return wallets.filter(
-      (w) =>
-        w.userId?.name?.toLowerCase().includes(q) ||
-        w.userId?.email?.toLowerCase().includes(q)
-    );
-  }, [wallets, search]);
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
+  /* =========================
+     Server-side fetch (with searchTerm)
+     ========================= */
+  const fetchWallets = useCallback(
+    async (currentPage: number, searchTerm: string) => {
+      try {
+        setFetching(true);
+
+        const params = new URLSearchParams({
+          page: String(currentPage),
+          limit: String(PAGE_SIZE),
+        });
+        if (searchTerm) params.append("searchTerm", searchTerm);
+
+        const res = await axiosSecure.get(
+          `/wallet/allUser/balance?${params.toString()}`
+        );
+
+        setWallets(res.data?.data?.wallets || []);
+        setMeta(
+          res.data?.data?.meta || {
+            total: 0,
+            page: currentPage,
+            limit: PAGE_SIZE,
+            totalPages: 1,
+          }
+        );
+      } catch (error: any) {
+        Swal.fire(
+          "Error",
+          error?.response?.data?.message || "Failed to load wallet data",
+          "error"
+        );
+        setWallets([]);
+      } finally {
+        setFetching(false);
+      }
+    },
+    [axiosSecure]
+  );
+
+  // Re-fetch whenever page or applied search changes
+  useEffect(() => {
+    fetchWallets(page, debouncedSearch);
+  }, [page, debouncedSearch, fetchWallets]);
+
+  // Server-side now; the visible list is just whatever the server returned.
+  const visibleWallets = wallets;
 
   /* =========================
      Adjust balance
@@ -123,7 +143,7 @@ const AllUserWalletBalance: React.FC = () => {
       setReason("");
       setOperation("increase");
 
-      fetchWallets(page);
+      fetchWallets(page, debouncedSearch);
     } catch (error: any) {
       Swal.fire(
         "Error",
@@ -164,15 +184,37 @@ const AllUserWalletBalance: React.FC = () => {
         </h2>
 
         {/* ================= SEARCH ================= */}
-        <div className="mb-4 flex items-center gap-3">
-          <Input
-            placeholder="Search by name or email on this page..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {search && (
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="relative flex-1">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <Input
+              placeholder="Search by name or email across all users..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-9 pr-9"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => setSearchInput("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+                aria-label="Clear search"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {debouncedSearch && (
             <span className="text-sm text-gray-500 whitespace-nowrap">
-              {filteredWallets.length} result{filteredWallets.length !== 1 ? "s" : ""}
+              {meta.total} result{meta.total !== 1 ? "s" : ""} for{" "}
+              <b className="text-gray-700">"{debouncedSearch}"</b>
+            </span>
+          )}
+
+          {searchInput && searchInput !== debouncedSearch && (
+            <span className="text-xs text-gray-400 whitespace-nowrap italic">
+              Searching...
             </span>
           )}
         </div>
@@ -198,16 +240,23 @@ const AllUserWalletBalance: React.FC = () => {
                 </tr>
               )}
 
-              {!fetching && filteredWallets.length === 0 && (
+              {!fetching && visibleWallets.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-4 text-center text-gray-500">
-                    {search ? "No results found on this page" : "No user found"}
+                  <td colSpan={4} className="p-6 text-center text-gray-500">
+                    {debouncedSearch ? (
+                      <span>
+                        No user matched <b>"{debouncedSearch}"</b>. Try a
+                        different name or email.
+                      </span>
+                    ) : (
+                      "No user found"
+                    )}
                   </td>
                 </tr>
               )}
 
               {!fetching &&
-                filteredWallets.map((wallet) => (
+                visibleWallets.map((wallet) => (
                   <tr
                     key={wallet._id}
                     className="border-b hover:bg-gray-50 transition-colors"
