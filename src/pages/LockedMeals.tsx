@@ -1,8 +1,24 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { axiosSecure } from "@/AllHooks/useAxiosSecure";
+import useAxiosSecure from "@/AllHooks/useAxiosSecure";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Calendar, Users, Utensils, Wallet } from "lucide-react";
+import {
+  FileSpreadsheet,
+  Calendar,
+  Users,
+  Utensils,
+  Wallet,
+  Plus,
+  Building as BuildingIcon,
+  Loader2,
+} from "lucide-react";
+import AddLockedMealModal from "@/components/dashboard/AddLockedMealModal";
+import { formatDatePretty, todayLocalIso } from "@/lib/utils";
+import {
+  downloadLockedMealsExcel,
+  ExcelBuildingSection,
+  ExcelFlatRow,
+} from "@/lib/lockedMealsExcel";
 
 interface Order {
   _id: string;
@@ -35,12 +51,30 @@ interface UserMealSummary {
   isPaid: boolean;
 }
 
-const LockedMeals: React.FC = () => {
+interface BuildingScreenSection {
+  buildingName: string;
+  users: UserMealSummary[];
+  totals: {
+    breakfast: number;
+    lunch: number;
+    dinner: number;
+    totalQty: number;
+    totalPrice: number;
+  };
+}
 
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+const LockedMeals: React.FC = () => {
+  const axiosSecure = useAxiosSecure();
+
+  // Use local-timezone date — toISOString() gives UTC, which is wrong after
+  // midnight in BD timezone (UTC+6) and would default the page to yesterday.
+  const [selectedDate, setSelectedDate] = useState(todayLocalIso());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
+
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   const fetchData = async (date: string) => {
     setLoading(true);
@@ -62,39 +96,38 @@ const LockedMeals: React.FC = () => {
     }
   }, [selectedDate]);
 
-  // Group orders by user - one row per user with all meals
+  // One row per user — used by both the building-grouped screen view and
+  // (indirectly) for header counts.
   const userMealSummaries = useMemo((): UserMealSummary[] => {
     if (!data?.orders) return [];
-    
+
     const userMap = new Map<string, UserMealSummary>();
-    
+
     data.orders.forEach((order: Order) => {
       const oderId = order.userId?._id || order.userId;
       const existing = userMap.get(oderId);
-      
+
       if (existing) {
-        // Update existing user entry
-        if (order.mealType === 'breakfast') {
+        if (order.mealType === "breakfast") {
           existing.breakfast.qty += order.quantity || 0;
           existing.breakfast.price += order.totalPrice || 0;
-        } else if (order.mealType === 'lunch') {
+        } else if (order.mealType === "lunch") {
           existing.lunch.qty += order.quantity || 0;
           existing.lunch.price += order.totalPrice || 0;
-        } else if (order.mealType === 'dinner') {
+        } else if (order.mealType === "dinner") {
           existing.dinner.qty += order.quantity || 0;
           existing.dinner.price += order.totalPrice || 0;
         }
         existing.totalQty += order.quantity || 0;
         existing.totalPrice += order.totalPrice || 0;
       } else {
-        // Create new user entry
         const newEntry: UserMealSummary = {
           userId: oderId,
-          userName: order.userId?.name || '-',
-          userPhone: order.userId?.phone || '-',
-          userEmail: order.userId?.email || '-',
-          building: order.buildingId?.name || '-',
-          flat: order.flatId?.name || '-',
+          userName: order.userId?.name || "-",
+          userPhone: order.userId?.phone || "-",
+          userEmail: order.userId?.email || "-",
+          building: order.buildingId?.name || "-",
+          flat: order.flatId?.name || "-",
           breakfast: { qty: 0, price: 0 },
           lunch: { qty: 0, price: 0 },
           dinner: { qty: 0, price: 0 },
@@ -102,41 +135,148 @@ const LockedMeals: React.FC = () => {
           totalPrice: order.totalPrice || 0,
           isPaid: order.isPaid || false,
         };
-        
-        if (order.mealType === 'breakfast') {
+
+        if (order.mealType === "breakfast") {
           newEntry.breakfast.qty = order.quantity || 0;
           newEntry.breakfast.price = order.totalPrice || 0;
-        } else if (order.mealType === 'lunch') {
+        } else if (order.mealType === "lunch") {
           newEntry.lunch.qty = order.quantity || 0;
           newEntry.lunch.price = order.totalPrice || 0;
-        } else if (order.mealType === 'dinner') {
+        } else if (order.mealType === "dinner") {
           newEntry.dinner.qty = order.quantity || 0;
           newEntry.dinner.price = order.totalPrice || 0;
         }
-        
+
         userMap.set(oderId, newEntry);
       }
     });
-    
+
     return Array.from(userMap.values());
   }, [data]);
 
+  // Group users by building for the on-screen view (Q1 option b: stacked).
+  // Use numeric-aware sort so "N2" comes before "N10".
+  const buildingsForScreen = useMemo<BuildingScreenSection[]>(() => {
+    const byBuilding = new Map<string, UserMealSummary[]>();
+    for (const u of userMealSummaries) {
+      if (!byBuilding.has(u.building)) byBuilding.set(u.building, []);
+      byBuilding.get(u.building)!.push(u);
+    }
+    return Array.from(byBuilding.entries())
+      .sort(([a], [b]) =>
+        a.localeCompare(b, undefined, { numeric: true }),
+      )
+      .map(([buildingName, users]) => {
+        const sortedUsers = [...users].sort((a, b) =>
+          a.flat.localeCompare(b.flat, undefined, { numeric: true }),
+        );
+        const totals = sortedUsers.reduce(
+          (acc, u) => ({
+            breakfast: acc.breakfast + u.breakfast.qty,
+            lunch: acc.lunch + u.lunch.qty,
+            dinner: acc.dinner + u.dinner.qty,
+            totalQty: acc.totalQty + u.totalQty,
+            totalPrice: acc.totalPrice + u.totalPrice,
+          }),
+          { breakfast: 0, lunch: 0, dinner: 0, totalQty: 0, totalPrice: 0 },
+        );
+        return { buildingName, users: sortedUsers, totals };
+      });
+  }, [userMealSummaries]);
 
+  // For the Excel report — aggregate orders by building, then by flat
+  // (one row per flat with combined meal counts). Matches how the manual
+  // paper form is keyed. Orders missing a building or flat name are skipped.
+  const buildingsForExcel = useMemo<ExcelBuildingSection[]>(() => {
+    if (!data?.orders) return [];
 
-  
+    const byBuilding = new Map<string, Map<string, ExcelFlatRow>>();
+    for (const order of data.orders as Order[]) {
+      const buildingName = order.buildingId?.name?.trim();
+      const flatName = order.flatId?.name?.trim();
+      if (!buildingName || !flatName) continue; // data hygiene
+      if (!byBuilding.has(buildingName)) byBuilding.set(buildingName, new Map());
+      const flatMap = byBuilding.get(buildingName)!;
+      if (!flatMap.has(flatName)) {
+        flatMap.set(flatName, { flatName, breakfast: 0, lunch: 0, dinner: 0 });
+      }
+      const row = flatMap.get(flatName)!;
+      const qty = order.quantity || 0;
+      if (order.mealType === "breakfast") row.breakfast += qty;
+      else if (order.mealType === "lunch") row.lunch += qty;
+      else if (order.mealType === "dinner") row.dinner += qty;
+    }
 
- 
+    return Array.from(byBuilding.entries())
+      .sort(([a], [b]) =>
+        a.localeCompare(b, undefined, { numeric: true }),
+      )
+      .map(([buildingName, flatMap]) => {
+        const rows = Array.from(flatMap.values()).sort((a, b) =>
+          a.flatName.localeCompare(b.flatName, undefined, { numeric: true }),
+        );
+        const totals = rows.reduce(
+          (acc, r) => ({
+            breakfast: acc.breakfast + r.breakfast,
+            lunch: acc.lunch + r.lunch,
+            dinner: acc.dinner + r.dinner,
+          }),
+          { breakfast: 0, lunch: 0, dinner: 0 },
+        );
+        return { buildingName, rows, totals };
+      });
+  }, [data]);
+
+  const grandTotalsForExcel = useMemo(() => {
+    const totals = buildingsForExcel.reduce(
+      (acc, b) => ({
+        breakfast: acc.breakfast + b.totals.breakfast,
+        lunch: acc.lunch + b.totals.lunch,
+        dinner: acc.dinner + b.totals.dinner,
+      }),
+      { breakfast: 0, lunch: 0, dinner: 0 },
+    );
+    return {
+      ...totals,
+      totalMoney: data?.grandTotal ?? 0,
+      totalUsers: userMealSummaries.length,
+    };
+  }, [buildingsForExcel, data, userMealSummaries.length]);
+
+  // Generate and download a styled .xlsx report. ExcelJS produces real
+  // spreadsheet files (sharp text, tiny size, native Bangla support) — much
+  // better than the rasterized-HTML PDF approach we used before.
+  const handleDownloadExcel = async () => {
+    if (buildingsForExcel.length === 0) return;
+    try {
+      setDownloadingExcel(true);
+      await downloadLockedMealsExcel({
+        date: selectedDate,
+        buildings: buildingsForExcel,
+        grandTotals: grandTotalsForExcel,
+      });
+    } catch (err) {
+      console.error("Excel download failed:", err);
+      setError("Excel ডাউনলোড করতে সমস্যা হয়েছে");
+    } finally {
+      setDownloadingExcel(false);
+    }
+  };
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6">
-      {/* Header with Date Picker */}
+      {/* Header with Date Picker + Actions */}
       <div className="bg-card rounded-lg shadow-sm border p-4 md:p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gradient mb-1">লক করা মিল রিপোর্ট</h1>
-            <p className="text-sm text-muted-foreground">Locked Meals Report</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gradient mb-1">
+              লক করা মিল রিপোর্ট
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Locked Meals Report — {formatDatePretty(selectedDate)}
+            </p>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -148,11 +288,29 @@ const LockedMeals: React.FC = () => {
               />
             </div>
             <div className="flex gap-2">
-              <Button className="flex-1 sm:flex-none">
-                <Download className="w-4 h-4 mr-2" />
-                Download PDF
+              <Button
+                variant="outline"
+                onClick={() => setAddModalOpen(true)}
+                disabled={loading}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                মিল যোগ করুন
               </Button>
-             
+              <Button
+                onClick={handleDownloadExcel}
+                disabled={
+                  downloadingExcel ||
+                  loading ||
+                  buildingsForExcel.length === 0
+                }
+              >
+                {downloadingExcel ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                )}
+                Excel ডাউনলোড
+              </Button>
             </div>
           </div>
         </div>
@@ -164,7 +322,7 @@ const LockedMeals: React.FC = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
       )}
-      
+
       {error && (
         <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-4">
           <p className="font-semibold">Error</p>
@@ -184,7 +342,9 @@ const LockedMeals: React.FC = () => {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">মোট ইউজার</div>
-                  <div className="text-2xl font-bold text-blue-600">{userMealSummaries.length}</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {userMealSummaries.length}
+                  </div>
                 </div>
               </div>
             </div>
@@ -195,7 +355,9 @@ const LockedMeals: React.FC = () => {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">মোট অর্ডার</div>
-                  <div className="text-2xl font-bold text-green-600">{data.totalOrders ?? 0}</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {data.totalOrders ?? 0}
+                  </div>
                 </div>
               </div>
             </div>
@@ -206,7 +368,9 @@ const LockedMeals: React.FC = () => {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">মোট মিল</div>
-                  <div className="text-2xl font-bold text-orange-600">{data.totalMeals ?? 0}</div>
+                  <div className="text-2xl font-bold text-orange-600">
+                    {data.totalMeals ?? 0}
+                  </div>
                 </div>
               </div>
             </div>
@@ -217,71 +381,67 @@ const LockedMeals: React.FC = () => {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">সর্বমোট টাকা</div>
-                  <div className="text-2xl font-bold text-purple-600">৳{data.grandTotal ?? 0}</div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    ৳{data.grandTotal ?? 0}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Meal Type Summary */}
-          <div>
-            <h3 className="text-xl font-semibold mb-4">মিলের সামারি (Meal Summary)</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {data.summary &&
-                Object.entries(data.summary).map(([mealType, info]: any) => (
-                  <div key={mealType} className="bg-card border rounded-lg shadow-sm overflow-hidden">
-                    <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-4 border-b">
-                      <div className="flex justify-between items-center">
-                        <h4 className="font-semibold capitalize text-lg">
-                          {mealType === 'breakfast' ? '🌅 সকালের নাস্তা' : 
-                           mealType === 'lunch' ? '🍛 দুপুরের খাবার' : 
-                           '🌙 রাতের খাবার'}
-                        </h4>
-                      </div>
-                      <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
-                        <span>Qty: <strong>{info.totalQuantity}</strong></span>
-                        <span>•</span>
-                        <span>Price: <strong>৳{info.totalPrice}</strong></span>
-                      </div>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted/50">
-                          <tr>
-                            <th className="text-left p-3 font-medium">User</th>
-                            <th className="text-left p-3 font-medium">Flat</th>
-                            <th className="text-center p-3 font-medium">Qty</th>
-                            <th className="text-right p-3 font-medium">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {info.orders.map((o: Order, idx: number) => (
-                            <tr key={o._id} className={idx % 2 === 0 ? 'bg-muted/20' : ''}>
-                              <td className="p-3">{o.userId?.name || "-"}</td>
-                              <td className="p-3">{o.flatId?.name || "-"}</td>
-                              <td className="p-3 text-center font-semibold">{o.quantity}</td>
-                              <td className="p-3 text-right font-semibold">৳{o.totalPrice}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ))}
+          {/* Empty state */}
+          {buildingsForScreen.length === 0 && (
+            <div className="bg-card border rounded-lg p-12 text-center">
+              <p className="text-muted-foreground">
+                এই তারিখে কোনো লক করা মিল নেই
+              </p>
             </div>
-          </div>
+          )}
 
-          {/* User Meal Summary Table - One user per row */}
-          <div>
-            <h3 className="text-xl font-semibold mb-4">📋 ইউজার ভিত্তিক মিল (User Wise Meals)</h3>
-            <div className="bg-card border rounded-lg shadow-sm overflow-hidden">
+          {/* Building-grouped sections (one section per building, stacked) */}
+          {buildingsForScreen.map((section) => (
+            <div
+              key={section.buildingName}
+              className="bg-card border rounded-lg shadow-sm overflow-hidden"
+            >
+              {/* Building header */}
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-4 border-b flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <BuildingIcon className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">
+                      বিল্ডিং: {section.buildingName}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {section.users.length} জন ইউজার
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded">
+                    🌅 {section.totals.breakfast}
+                  </span>
+                  <span className="bg-green-100 text-green-700 px-3 py-1 rounded">
+                    🍛 {section.totals.lunch}
+                  </span>
+                  <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded">
+                    🌙 {section.totals.dinner}
+                  </span>
+                  <span className="bg-primary/10 text-primary px-3 py-1 rounded font-bold">
+                    মোট ৳{section.totals.totalPrice}
+                  </span>
+                </div>
+              </div>
+
+              {/* Users table */}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-muted">
                     <tr>
                       <th className="text-left p-3 font-medium">User</th>
                       <th className="text-left p-3 font-medium">Phone</th>
-                      <th className="text-left p-3 font-medium">Building</th>
                       <th className="text-left p-3 font-medium">Flat</th>
                       <th className="text-center p-3 font-medium">🌅 Breakfast</th>
                       <th className="text-center p-3 font-medium">🍛 Lunch</th>
@@ -292,88 +452,127 @@ const LockedMeals: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {userMealSummaries.map((user, idx) => (
-                      <tr key={user.userId} className={`${idx % 2 === 0 ? 'bg-muted/20' : ''} hover:bg-muted/40 transition-colors`}>
+                    {section.users.map((user, idx) => (
+                      <tr
+                        key={user.userId}
+                        className={`${idx % 2 === 0 ? "bg-muted/20" : ""} hover:bg-muted/40 transition-colors`}
+                      >
                         <td className="p-3">
                           <p className="font-medium">{user.userName}</p>
-                          <p className="text-xs text-muted-foreground">{user.userEmail}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {user.userEmail}
+                          </p>
                         </td>
                         <td className="p-3">{user.userPhone}</td>
-                        <td className="p-3">{user.building}</td>
-                        <td className="p-3">{user.flat}</td>
+                        <td className="p-3 font-semibold">{user.flat}</td>
                         <td className="p-3 text-center">
                           {user.breakfast.qty > 0 ? (
-                            <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 px-2 py-1 rounded">
-                              <span className="font-semibold">{user.breakfast.qty}</span>
-                              <span className="text-xs ml-1">(৳{user.breakfast.price})</span>
+                            <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 px-2 py-1 rounded inline-block">
+                              <span className="font-semibold">
+                                {user.breakfast.qty}
+                              </span>
+                              <span className="text-xs ml-1">
+                                (৳{user.breakfast.price})
+                              </span>
                             </div>
-                          ) : <span className="text-muted-foreground">-</span>}
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </td>
                         <td className="p-3 text-center">
                           {user.lunch.qty > 0 ? (
-                            <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded">
+                            <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded inline-block">
                               <span className="font-semibold">{user.lunch.qty}</span>
-                              <span className="text-xs ml-1">(৳{user.lunch.price})</span>
+                              <span className="text-xs ml-1">
+                                (৳{user.lunch.price})
+                              </span>
                             </div>
-                          ) : <span className="text-muted-foreground">-</span>}
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </td>
                         <td className="p-3 text-center">
                           {user.dinner.qty > 0 ? (
-                            <div className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 px-2 py-1 rounded">
-                              <span className="font-semibold">{user.dinner.qty}</span>
-                              <span className="text-xs ml-1">(৳{user.dinner.price})</span>
+                            <div className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 px-2 py-1 rounded inline-block">
+                              <span className="font-semibold">
+                                {user.dinner.qty}
+                              </span>
+                              <span className="text-xs ml-1">
+                                (৳{user.dinner.price})
+                              </span>
                             </div>
-                          ) : <span className="text-muted-foreground">-</span>}
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </td>
                         <td className="p-3 text-center">
                           <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded font-semibold">
                             {user.totalQty}
                           </span>
                         </td>
-                        <td className="p-3 text-right font-bold text-primary">৳{user.totalPrice}</td>
+                        <td className="p-3 text-right font-bold text-primary">
+                          ৳{user.totalPrice}
+                        </td>
                         <td className="p-3 text-center">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-                            ${user.isPaid ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                            {user.isPaid ? '✓ Paid' : '✗ Unpaid'}
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              user.isPaid
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                            }`}
+                          >
+                            {user.isPaid ? "✓ Paid" : "✗ Unpaid"}
                           </span>
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                  {/* Table Footer with Totals */}
                   <tfoot className="bg-muted/50 font-semibold">
                     <tr>
-                      <td colSpan={4} className="p-3 text-right">Total:</td>
+                      <td colSpan={3} className="p-3 text-right">
+                        বিল্ডিং মোট:
+                      </td>
                       <td className="p-3 text-center">
-                        <span className="bg-orange-200 dark:bg-orange-900/50 px-2 py-1 rounded">
-                          {userMealSummaries.reduce((sum, u) => sum + u.breakfast.qty, 0)}
+                        <span className="bg-orange-200 px-2 py-1 rounded">
+                          {section.totals.breakfast}
                         </span>
                       </td>
                       <td className="p-3 text-center">
-                        <span className="bg-green-200 dark:bg-green-900/50 px-2 py-1 rounded">
-                          {userMealSummaries.reduce((sum, u) => sum + u.lunch.qty, 0)}
+                        <span className="bg-green-200 px-2 py-1 rounded">
+                          {section.totals.lunch}
                         </span>
                       </td>
                       <td className="p-3 text-center">
-                        <span className="bg-indigo-200 dark:bg-indigo-900/50 px-2 py-1 rounded">
-                          {userMealSummaries.reduce((sum, u) => sum + u.dinner.qty, 0)}
+                        <span className="bg-indigo-200 px-2 py-1 rounded">
+                          {section.totals.dinner}
                         </span>
                       </td>
                       <td className="p-3 text-center">
-                        <span className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
-                          {data.totalMeals ?? 0}
+                        <span className="bg-gray-200 px-2 py-1 rounded">
+                          {section.totals.totalQty}
                         </span>
                       </td>
-                      <td className="p-3 text-right text-primary">৳{data.grandTotal ?? 0}</td>
+                      <td className="p-3 text-right text-primary">
+                        ৳{section.totals.totalPrice}
+                      </td>
                       <td></td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
             </div>
-          </div>
+          ))}
         </div>
       )}
+
+      {/* Add Locked Meal modal */}
+      <AddLockedMealModal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        defaultDate={selectedDate}
+        onSuccess={() => fetchData(selectedDate)}
+      />
+
     </div>
   );
 };
