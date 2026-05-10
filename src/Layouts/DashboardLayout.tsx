@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom"; // নির্দেশনা অনুযায়ী react-router
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Home,
   UtensilsCrossed,
   CreditCard,
   User,
@@ -13,9 +12,14 @@ import {
   LayoutDashboard,
   ChevronDown,
   Users,
-  FileText,
   ShieldCheck,
   Settings2,
+  ShoppingBasket,
+  Building2,
+  Lock,
+  UserCog,
+  IdCard,
+  Wallet,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -34,13 +38,13 @@ const menuConfig: Record<Role, MenuItem[]> = {
   admin: [
     { icon: LayoutDashboard, label: "এডমিন ড্যাশবোর্ড", href: "/admin-dashboard" },
     { icon: Users, label: "ইউজার ম্যানেজমেন্ট", href: "/admin-dashboard/users-management" },
-    { icon: Users, label: "বিল্ডিং ম্যানেজমেন্ট", href: "/admin-dashboard/building-management" },
+    { icon: Building2, label: "বিল্ডিং ম্যানেজমেন্ট", href: "/admin-dashboard/building-management" },
     { icon: UtensilsCrossed, label: "মিল কন্ট্রোল", href: "/admin-dashboard/meals-control" },
-    { icon: UtensilsCrossed, label: "লক করা মিল", href: "/admin-dashboard/locked-meals" },
-    { icon: FileText, label: "বিল জেনারেটর", href: "/admin-dashboard/bill-generator" },
-    { icon: FileText, label: "এডিট ইউজার", href: "/admin-dashboard/user" },
-    { icon: FileText, label: "সব প্রোফাইল", href: "/admin-dashboard/Profile" },
-    { icon: FileText, label: "ব্যালান্স আপডেট", href: "/admin-dashboard/userbalance" },
+    { icon: Lock, label: "লক করা মিল", href: "/admin-dashboard/locked-meals" },
+    { icon: UserCog, label: "এডিট ইউজার", href: "/admin-dashboard/user" },
+    { icon: IdCard, label: "সব প্রোফাইল", href: "/admin-dashboard/Profile" },
+    { icon: Wallet, label: "ব্যালান্স আপডেট", href: "/admin-dashboard/userbalance" },
+    { icon: ShoppingBasket, label: "বাজার হিসাব", href: "/admin-dashboard/bazar-hisab" },
     { icon: Settings2, label: "মিল সেটিংস", href: "/admin-dashboard/meal-settings" },
   ],
   
