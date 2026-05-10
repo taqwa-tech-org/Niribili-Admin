@@ -32,8 +32,12 @@ interface Profile {
 }
 
 interface EditForm {
-  profilePhoto: string;
-  nidPhoto: string;
+  // User-level fields (name + phone only — email is locked)
+  name: string;
+  phone: string;
+  // Profile photo URLs (null = remove, string = current/new URL, "" = unchanged on initial state)
+  profilePhoto: string | null;
+  nidPhoto: string | null;
   guardianName: string;
   guardianPhone: string;
   guardianRelation: string;
@@ -45,6 +49,24 @@ interface EditForm {
   whatsappNumber: string;
   bio: string;
 }
+
+// Cloudinary config — same as user-side upload
+const CLOUDINARY_CLOUD_NAME = "dehak09z6";
+const CLOUDINARY_UPLOAD_PRESET = "Niribili_Image_info";
+
+const uploadToCloudinary = async (file: File): Promise<string> => {
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+    { method: "POST", body: fd },
+  );
+  if (!res.ok) throw new Error("Cloudinary upload failed");
+  const data = await res.json();
+  if (!data.secure_url) throw new Error("Cloudinary returned no URL");
+  return data.secure_url as string;
+};
 
 interface Building {
   _id: string;
@@ -68,7 +90,9 @@ const STATUS_STYLES: Record<string, string> = {
 const ACCOUNT_STATUS_OPTIONS = ["pending", "process", "approve", "rejected"];
 
 const blankForm = (): EditForm => ({
-  profilePhoto: "", nidPhoto: "", guardianName: "", guardianPhone: "",
+  name: "", phone: "",
+  profilePhoto: "", nidPhoto: "",
+  guardianName: "", guardianPhone: "",
   guardianRelation: "", emergencyContact: "", buildingId: "", flatId: "",
   room: "", accountStatus: "pending", whatsappNumber: "", bio: "",
 });
@@ -105,6 +129,99 @@ const Section = ({ label }: { label: string }) => (
   </div>
 );
 
+/* ─── Photo Field ──────────────────────────────────────────
+ * Three states for each slot:
+ *   • currentUrl is a string and no preview      → show existing image
+ *   • previewUrl is set                          → show local preview of newly-selected file
+ *   • currentUrl is null (explicit remove)       → show "No image" placeholder
+ *   • currentUrl is "" (never had one)           → show "No image" placeholder
+ */
+const PhotoField = ({
+  label,
+  currentUrl,
+  previewUrl,
+  hasPendingFile,
+  originalUrl,
+  onSelect,
+  onRemove,
+  onUndo,
+}: {
+  label: string;
+  currentUrl: string | null;
+  previewUrl: string | null;
+  hasPendingFile: boolean;
+  originalUrl: string | null;
+  onSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemove: () => void;
+  onUndo: () => void;
+}) => {
+  const inputId = `photo-${label.replace(/\s+/g, "-").toLowerCase()}`;
+
+  // What to display
+  const displayUrl = previewUrl ?? (currentUrl || null);
+  const isMarkedForRemoval = currentUrl === null && !previewUrl;
+  const hasChanged = hasPendingFile || isMarkedForRemoval || (currentUrl !== originalUrl);
+
+  return (
+    <div className="col-span-2 sm:col-span-1 flex flex-col gap-1.5">
+      <label className="text-xs font-semibold uppercase tracking-widest text-gray-400">{label}</label>
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 flex flex-col gap-3">
+        <div className="w-full aspect-[4/3] rounded-lg border border-gray-200 bg-white overflow-hidden flex items-center justify-center text-xs text-gray-400">
+          {displayUrl ? (
+            <img src={displayUrl} alt={label} className="w-full h-full object-cover" />
+          ) : (
+            <span>{isMarkedForRemoval ? "Will be removed on save" : "No image uploaded"}</span>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <label
+            htmlFor={inputId}
+            className="cursor-pointer px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 text-teal-700 text-xs font-bold hover:bg-teal-600 hover:text-white hover:border-teal-600 transition"
+          >
+            {displayUrl ? "Change" : "Upload"}
+          </label>
+          <input
+            id={inputId}
+            type="file"
+            accept="image/*"
+            onChange={onSelect}
+            className="hidden"
+          />
+
+          {displayUrl && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 text-xs font-bold hover:bg-red-600 hover:text-white hover:border-red-600 transition"
+            >
+              Remove
+            </button>
+          )}
+
+          {hasChanged && (
+            <button
+              type="button"
+              onClick={onUndo}
+              className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-500 text-xs font-bold hover:bg-gray-100 transition"
+              title="Discard pending change"
+            >
+              Undo
+            </button>
+          )}
+
+          {hasPendingFile && (
+            <span className="text-xs text-amber-600 font-semibold">• new image pending save</span>
+          )}
+          {isMarkedForRemoval && (
+            <span className="text-xs text-red-500 font-semibold">• removal pending save</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ══════════════════════════════════════════════════════════ */
 const Edituser: React.FC = () => {
   const axiosSecure = useAxiosSecure();
@@ -122,6 +239,13 @@ const Edituser: React.FC = () => {
   const [form, setForm]       = useState<EditForm>(blankForm());
   const [saving, setSaving]   = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Pending file uploads (selected but not yet uploaded — uploaded on Save)
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [nidPhotoFile, setNidPhotoFile]         = useState<File | null>(null);
+  // Local preview URLs for newly selected files (created with URL.createObjectURL)
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+  const [nidPhotoPreview, setNidPhotoPreview]         = useState<string | null>(null);
 
   const [buildings, setBuildings]               = useState<Building[]>([]);
   const [flats, setFlats]                       = useState<Flat[]>([]);
@@ -204,6 +328,8 @@ const Edituser: React.FC = () => {
     const flatId =
       typeof p.flatId === "string" ? p.flatId : p.flatId?._id || "";
     setForm({
+      name:             p.userId?.name     ?? "",
+      phone:            p.userId?.phone    ?? "",
       profilePhoto:     p.profilePhoto     ?? "",
       nidPhoto:         p.nidPhoto         ?? "",
       guardianName:     p.guardianName     ?? "",
@@ -217,11 +343,77 @@ const Edituser: React.FC = () => {
       whatsappNumber:   p.whatsappNumber   ?? "",
       bio:              p.bio              ?? "",
     });
+    setProfilePhotoFile(null);
+    setNidPhotoFile(null);
+    setProfilePhotoPreview(null);
+    setNidPhotoPreview(null);
     fetchBuildings();
     if (buildingId) fetchFlats(buildingId);
   };
 
-  const closeEdit = () => { setEditing(null); setSaveMsg(null); setFlats([]); };
+  const closeEdit = () => {
+    setEditing(null); setSaveMsg(null); setFlats([]);
+    setProfilePhotoFile(null); setNidPhotoFile(null);
+    if (profilePhotoPreview) URL.revokeObjectURL(profilePhotoPreview);
+    if (nidPhotoPreview) URL.revokeObjectURL(nidPhotoPreview);
+    setProfilePhotoPreview(null); setNidPhotoPreview(null);
+  };
+
+  // ── Photo handlers ──────────────────────────────────────────────────────
+  const handlePhotoSelect = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: "profilePhoto" | "nidPhoto",
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setSaveMsg({ ok: false, text: "Please select an image file." });
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    if (field === "profilePhoto") {
+      if (profilePhotoPreview) URL.revokeObjectURL(profilePhotoPreview);
+      setProfilePhotoFile(file);
+      setProfilePhotoPreview(url);
+    } else {
+      if (nidPhotoPreview) URL.revokeObjectURL(nidPhotoPreview);
+      setNidPhotoFile(file);
+      setNidPhotoPreview(url);
+    }
+    // Clear the input so the same file can be re-selected later
+    e.target.value = "";
+  };
+
+  const handlePhotoRemove = (field: "profilePhoto" | "nidPhoto") => {
+    if (field === "profilePhoto") {
+      setProfilePhotoFile(null);
+      if (profilePhotoPreview) URL.revokeObjectURL(profilePhotoPreview);
+      setProfilePhotoPreview(null);
+      // null = explicit remove (vs. "" which means "unchanged")
+      setForm(f => ({ ...f, profilePhoto: null }));
+    } else {
+      setNidPhotoFile(null);
+      if (nidPhotoPreview) URL.revokeObjectURL(nidPhotoPreview);
+      setNidPhotoPreview(null);
+      setForm(f => ({ ...f, nidPhoto: null }));
+    }
+  };
+
+  const handlePhotoUndoChange = (field: "profilePhoto" | "nidPhoto") => {
+    // Restore the original DB value and discard the pending file/removal
+    if (!editing) return;
+    if (field === "profilePhoto") {
+      setProfilePhotoFile(null);
+      if (profilePhotoPreview) URL.revokeObjectURL(profilePhotoPreview);
+      setProfilePhotoPreview(null);
+      setForm(f => ({ ...f, profilePhoto: editing.profilePhoto ?? "" }));
+    } else {
+      setNidPhotoFile(null);
+      if (nidPhotoPreview) URL.revokeObjectURL(nidPhotoPreview);
+      setNidPhotoPreview(null);
+      setForm(f => ({ ...f, nidPhoto: editing.nidPhoto ?? "" }));
+    }
+  };
 
   const setField = (key: keyof EditForm) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -236,17 +428,58 @@ const Edituser: React.FC = () => {
   const handleSave = async () => {
     if (!editing) return;
     setSaving(true); setSaveMsg(null);
-    const payload: Record<string, string> = {};
-    (Object.keys(form) as (keyof EditForm)[]).forEach(k => {
-      if (form[k] !== "") payload[k] = form[k];
-    });
+
     try {
-      await axiosSecure.patch(`/profile/${editing._id}`, payload);
+      // 1) Upload any newly-selected photos to Cloudinary first
+      let nextProfilePhoto: string | null | undefined = undefined; // undefined = no change
+      let nextNidPhoto: string | null | undefined = undefined;
+
+      if (profilePhotoFile) {
+        nextProfilePhoto = await uploadToCloudinary(profilePhotoFile);
+      } else if (form.profilePhoto === null) {
+        nextProfilePhoto = null; // explicit remove
+      }
+
+      if (nidPhotoFile) {
+        nextNidPhoto = await uploadToCloudinary(nidPhotoFile);
+      } else if (form.nidPhoto === null) {
+        nextNidPhoto = null;
+      }
+
+      // 2) Build profile-level payload (everything except name/phone)
+      const profilePayload: Record<string, unknown> = {};
+      const profileFieldKeys: (keyof EditForm)[] = [
+        "guardianName", "guardianPhone", "guardianRelation", "emergencyContact",
+        "buildingId", "flatId", "room", "accountStatus", "whatsappNumber", "bio",
+      ];
+      profileFieldKeys.forEach(k => {
+        const v = form[k];
+        if (typeof v === "string" && v !== "") profilePayload[k] = v;
+      });
+      if (nextProfilePhoto !== undefined) profilePayload.profilePhoto = nextProfilePhoto;
+      if (nextNidPhoto !== undefined) profilePayload.nidPhoto = nextNidPhoto;
+
+      // 3) Build user-level payload (name + phone — only if changed)
+      const userPayload: Record<string, string> = {};
+      const originalName = editing.userId?.name ?? "";
+      const originalPhone = editing.userId?.phone ?? "";
+      if (form.name.trim() && form.name !== originalName) userPayload.name = form.name.trim();
+      if (form.phone.trim() && form.phone !== originalPhone) userPayload.phone = form.phone.trim();
+
+      // 4) Fire requests. User update first so a profile-only error doesn't block name fix.
+      const userId = editing.userId?._id;
+      if (Object.keys(userPayload).length > 0 && userId) {
+        await axiosSecure.patch(`/user/admin-edit/${userId}`, userPayload);
+      }
+      if (Object.keys(profilePayload).length > 0) {
+        await axiosSecure.patch(`/profile/${editing._id}`, profilePayload);
+      }
+
       setSaveMsg({ ok: true, text: "Profile updated successfully!" });
       fetchProfiles(page, search);
       setTimeout(closeEdit, 1400);
     } catch (err: any) {
-      setSaveMsg({ ok: false, text: err?.response?.data?.message ?? "Update failed." });
+      setSaveMsg({ ok: false, text: err?.response?.data?.message ?? err?.message ?? "Update failed." });
     } finally { setSaving(false); }
   };
 
@@ -482,6 +715,47 @@ const Edituser: React.FC = () => {
             {/* Modal Body */}
             <div className="px-7 py-6">
               <div className="grid grid-cols-2 gap-4">
+
+                <Section label="User Info" />
+
+                <Field label="Name">
+                  <input className={inputCls} value={form.name} onChange={setField("name")} placeholder="Full name" />
+                </Field>
+                <Field label="Phone">
+                  <input className={inputCls} value={form.phone} onChange={setField("phone")} placeholder="+8801…" />
+                </Field>
+                <Field label="Email (locked)" full>
+                  <input
+                    className={inputCls + " bg-gray-100 text-gray-400 cursor-not-allowed"}
+                    value={editing.userId?.email ?? "—"}
+                    disabled
+                    readOnly
+                    title="Email cannot be changed because it is the user's identity. To change email, delete the account and let the user re-register."
+                  />
+                </Field>
+
+                <Section label="Photos" />
+
+                <PhotoField
+                  label="Profile Photo"
+                  currentUrl={form.profilePhoto}
+                  previewUrl={profilePhotoPreview}
+                  hasPendingFile={!!profilePhotoFile}
+                  originalUrl={editing.profilePhoto}
+                  onSelect={e => handlePhotoSelect(e, "profilePhoto")}
+                  onRemove={() => handlePhotoRemove("profilePhoto")}
+                  onUndo={() => handlePhotoUndoChange("profilePhoto")}
+                />
+                <PhotoField
+                  label="NID Photo"
+                  currentUrl={form.nidPhoto}
+                  previewUrl={nidPhotoPreview}
+                  hasPendingFile={!!nidPhotoFile}
+                  originalUrl={editing.nidPhoto}
+                  onSelect={e => handlePhotoSelect(e, "nidPhoto")}
+                  onRemove={() => handlePhotoRemove("nidPhoto")}
+                  onUndo={() => handlePhotoUndoChange("nidPhoto")}
+                />
 
                 <Section label="Personal Info" />
 

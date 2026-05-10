@@ -2,11 +2,11 @@ import App from "@/App";
 import AuthComponent from "@/Auth/AuthComponent";
 import AllProfile from "@/components/dashboard/AllProfile";
 import AllUser from "@/components/dashboard/Edituser";
-import BillingGenerator from "@/components/dashboard/BillGenaretor";
 import MealControl from "@/components/dashboard/MealControl";
 import LockExpired from "@/pages/LockExpired";
 import LockedMeals from "@/pages/LockedMeals";
 import MealSettings from "@/pages/MealSettings";
+import BazarHisab from "@/pages/BazarHisab";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import DashboardLayout from "@/Layouts/DashboardLayout";
 import AdminDashboard from "@/pages/AdminDashboard";
@@ -38,12 +38,12 @@ const appRoutes = createBrowserRouter([
       { path: "building-management", element: <BuildingManagement /> },
       { path: "meals-control", element: <MealControl /> },
       { path: "lock-expired", element: <LockExpired /> },
-      { path: "bill-generator", element: <BillingGenerator /> },
       { path: "user", element: <AllUser /> },
       { path: "Profile", element: <AllProfile /> },
       { path: "userbalance", element: <AllUserWalletBalance /> },
       { path: "locked-meals", element: <LockedMeals /> },
       { path: "meal-settings", element: <MealSettings /> },
+      { path: "bazar-hisab", element: <BazarHisab /> },
     ],
   },
 
