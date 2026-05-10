@@ -210,6 +210,70 @@ const AllProfile: React.FC = () => {
     if (e.key === "Enter") handleSearch();
   };
 
+  // ── Restore ───────────────────────────────────────────────────────────────
+  const handleRestoreUser = async () => {
+    if (!selectedProfile) return;
+    const confirm = await Swal.fire({
+      title: "Restore this user?",
+      text: `${selectedProfile.userId?.name} will be reactivated and can log in again.`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, restore",
+      confirmButtonColor: "#16a34a",
+      cancelButtonText: "Cancel",
+    });
+    if (!confirm.isConfirmed) return;
+    try {
+      setUpdating(true);
+      await axiosSecure.patch(`/user/restore/${selectedProfile.userId._id}`);
+      Swal.fire({
+        icon: "success",
+        title: "Restored",
+        text: "User account has been reactivated.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      setSelectedProfile(null);
+      fetchProfiles(page, tab, search);
+    } catch (err: any) {
+      Swal.fire("Error", err?.response?.data?.message || "Failed to restore user", "error");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // ── Permanent Delete ──────────────────────────────────────────────────────
+  const handlePermanentDelete = async () => {
+    if (!selectedProfile) return;
+    const confirm = await Swal.fire({
+      title: "Permanently delete?",
+      html: `<p>This will <strong>permanently remove</strong> <b>${selectedProfile.userId?.name}</b> from the system.</p><p class="text-sm text-gray-500 mt-1">Their email will be freed and can be used to register a new account.</p>`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete permanently",
+      confirmButtonColor: "#dc2626",
+      cancelButtonText: "Cancel",
+    });
+    if (!confirm.isConfirmed) return;
+    try {
+      setUpdating(true);
+      await axiosSecure.delete(`/user/permanent-delete/${selectedProfile.userId._id}`);
+      Swal.fire({
+        icon: "success",
+        title: "Deleted",
+        text: "User has been permanently removed.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      setSelectedProfile(null);
+      fetchProfiles(page, tab, search);
+    } catch (err: any) {
+      Swal.fire("Error", err?.response?.data?.message || "Failed to permanently delete user", "error");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   // ── Approve ───────────────────────────────────────────────────────────────
   const handleApproveUser = async () => {
     if (!selectedProfile) return;
@@ -464,7 +528,7 @@ const AllProfile: React.FC = () => {
                 <h3 className="text-xl font-bold">Profile Details</h3>
                 <p className="text-sm text-muted-foreground">{selectedProfile.userId?.email}</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <StatusBadge
                   isDeleted={selectedProfile.isDeleted}
                   accountStatus={selectedProfile.accountStatus}
@@ -473,6 +537,24 @@ const AllProfile: React.FC = () => {
                   <Button disabled={updating} onClick={handleApproveUser}>
                     {updating ? "Approving..." : "Approve User"}
                   </Button>
+                )}
+                {selectedProfile.isDeleted && (
+                  <>
+                    <Button
+                      disabled={updating}
+                      onClick={handleRestoreUser}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      {updating ? "Processing..." : "Restore User"}
+                    </Button>
+                    <Button
+                      disabled={updating}
+                      onClick={handlePermanentDelete}
+                      variant="destructive"
+                    >
+                      {updating ? "Processing..." : "Permanently Delete"}
+                    </Button>
+                  </>
                 )}
               </div>
             </div>

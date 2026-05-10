@@ -332,17 +332,17 @@ const UserTransaction = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] flex items-center justify-center text-white font-bold text-lg">
-                        {transaction.userId.name.charAt(0).toUpperCase()}
+                        {transaction.userId?.name?.charAt(0)?.toUpperCase() ?? "?"}
                       </div>
                       <div>
                         <h3 className="font-bold text-lg text-gray-800">
-                          {transaction.userId.name}
+                          {transaction.userId?.name ?? "Deleted user"}
                         </h3>
                         <p className="text-sm text-gray-600">
-                          {transaction.userId.email}
+                          {transaction.userId?.email ?? "—"}
                         </p>
                         <p className="text-sm text-gray-600">
-                          {transaction.userId.phone}
+                          {transaction.userId?.phone ?? "—"}
                         </p>
                       </div>
                     </div>
@@ -407,7 +407,7 @@ const UserTransaction = () => {
                       <div className="flex justify-between lg:justify-start lg:gap-4">
                         <span className="text-gray-600">Current:</span>
                         <span className="font-bold text-[hsl(168,80%,32%)]">
-                          {formatCurrency(transaction.walletId.balance)}
+                          {formatCurrency(transaction.walletId?.balance ?? 0)}
                         </span>
                       </div>
                     </div>
