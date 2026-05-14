@@ -4,123 +4,124 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Niribili Home Design System */
+/* Niribili Bachelor Home Admin Design System — Navy Monochrome (based on logo) */
 html{
   scroll-behavior: smooth;
 }
 @layer base {
   :root {
     --background: 40 33% 98%;
-    --foreground: 200 25% 15%;
+    --foreground: 222 50% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 200 25% 15%;
+    --card-foreground: 222 50% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 200 25% 15%;
+    --popover-foreground: 222 50% 15%;
 
-    --primary: 168 80% 32%;
+    --primary: 222 60% 22%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 40 30% 94%;
-    --secondary-foreground: 200 25% 15%;
+    --secondary: 220 30% 94%;
+    --secondary-foreground: 222 50% 15%;
 
-    --muted: 40 20% 92%;
-    --muted-foreground: 200 15% 45%;
+    --muted: 220 20% 92%;
+    --muted-foreground: 222 15% 45%;
 
-    --accent: 38 92% 50%;
-    --accent-foreground: 200 25% 10%;
+    --accent: 220 50% 50%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 20% 88%;
-    --input: 40 20% 88%;
-    --ring: 168 80% 32%;
+    --border: 220 20% 88%;
+    --input: 220 20% 88%;
+    --ring: 222 60% 22%;
 
     --radius: 0.75rem;
 
-    /* Custom tokens */
-    --teal: 168 80% 32%;
-    --teal-light: 168 60% 45%;
-    --teal-dark: 168 85% 25%;
-    --gold: 38 92% 50%;
-    --gold-light: 40 90% 65%;
+    /* Custom tokens — navy palette (teal/gold token names kept for backward-compat) */
+    --teal: 222 60% 22%;
+    --teal-light: 220 50% 50%;
+    --teal-dark: 222 70% 14%;
+    --gold: 220 50% 50%;
+    --gold-light: 218 55% 65%;
     --cream: 40 33% 98%;
     --cream-dark: 40 25% 92%;
 
     /* Gradients */
-    --gradient-hero: linear-gradient(135deg, hsl(168 80% 32%) 0%, hsl(168 60% 45%) 100%);
-    --gradient-gold: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(40 90% 65%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(222 60% 22%) 0%, hsl(220 50% 40%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(220 50% 50%) 0%, hsl(218 55% 65%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(40 30% 98%) 100%);
     --gradient-overlay: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 100%);
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(200 25% 15% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(200 25% 15% / 0.08), 0 2px 4px -2px hsl(200 25% 15% / 0.05);
-    --shadow-lg: 0 10px 15px -3px hsl(200 25% 15% / 0.08), 0 4px 6px -4px hsl(200 25% 15% / 0.05);
-    --shadow-xl: 0 20px 25px -5px hsl(200 25% 15% / 0.1), 0 8px 10px -6px hsl(200 25% 15% / 0.05);
-    --shadow-glow: 0 0 40px hsl(168 80% 32% / 0.15);
-    --shadow-gold: 0 0 30px hsl(38 92% 50% / 0.2);
+    --shadow-sm: 0 1px 2px 0 hsl(222 50% 15% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(222 50% 15% / 0.08), 0 2px 4px -2px hsl(222 50% 15% / 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(222 50% 15% / 0.08), 0 4px 6px -4px hsl(222 50% 15% / 0.05);
+    --shadow-xl: 0 20px 25px -5px hsl(222 50% 15% / 0.1), 0 8px 10px -6px hsl(222 50% 15% / 0.05);
+    --shadow-glow: 0 0 40px hsl(222 60% 22% / 0.2);
+    --shadow-gold: 0 0 30px hsl(220 50% 50% / 0.25);
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 200 25% 15%;
-    --sidebar-primary: 168 80% 32%;
+    --sidebar-foreground: 222 50% 15%;
+    --sidebar-primary: 222 60% 22%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 40 30% 94%;
-    --sidebar-accent-foreground: 200 25% 15%;
-    --sidebar-border: 40 20% 88%;
-    --sidebar-ring: 168 80% 32%;
+    --sidebar-accent: 220 30% 94%;
+    --sidebar-accent-foreground: 222 50% 15%;
+    --sidebar-border: 220 20% 88%;
+    --sidebar-ring: 222 60% 22%;
   }
 
   .dark {
-    --background: 200 25% 8%;
+    --background: 222 50% 8%;
     --foreground: 40 20% 95%;
 
-    --card: 200 20% 12%;
+    --card: 222 40% 12%;
     --card-foreground: 40 20% 95%;
 
-    --popover: 200 20% 12%;
+    --popover: 222 40% 12%;
     --popover-foreground: 40 20% 95%;
 
-    --primary: 168 70% 45%;
-    --primary-foreground: 200 25% 8%;
+    --primary: 220 60% 60%;
+    --primary-foreground: 222 50% 8%;
 
-    --secondary: 200 20% 18%;
+    --secondary: 222 30% 18%;
     --secondary-foreground: 40 20% 95%;
 
-    --muted: 200 20% 18%;
-    --muted-foreground: 200 15% 55%;
+    --muted: 222 30% 18%;
+    --muted-foreground: 220 15% 65%;
 
-    --accent: 38 85% 55%;
-    --accent-foreground: 200 25% 8%;
+    --accent: 218 55% 65%;
+    --accent-foreground: 222 50% 8%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 200 20% 20%;
-    --input: 200 20% 20%;
-    --ring: 168 70% 45%;
+    --border: 222 30% 22%;
+    --input: 222 30% 22%;
+    --ring: 220 60% 60%;
 
-    --teal: 168 70% 45%;
-    --teal-light: 168 60% 55%;
-    --teal-dark: 168 80% 35%;
-    --gold: 38 85% 55%;
-    --gold-light: 40 80% 65%;
-    --cream: 200 25% 8%;
-    --cream-dark: 200 20% 12%;
+    --teal: 220 60% 60%;
+    --teal-light: 220 55% 70%;
+    --teal-dark: 222 65% 30%;
+    --gold: 218 55% 65%;
+    --gold-light: 220 60% 75%;
+    --cream: 222 50% 8%;
+    --cream-dark: 222 40% 12%;
 
-    --gradient-hero: linear-gradient(135deg, hsl(168 70% 45%) 0%, hsl(168 60% 55%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(200 20% 12%) 0%, hsl(200 20% 10%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(220 60% 60%) 0%, hsl(218 55% 70%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(218 55% 65%) 0%, hsl(220 60% 75%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(222 40% 12%) 0%, hsl(222 40% 10%) 100%);
 
-    --sidebar-background: 200 20% 10%;
+    --sidebar-background: 222 40% 10%;
     --sidebar-foreground: 40 20% 95%;
-    --sidebar-primary: 168 70% 45%;
-    --sidebar-primary-foreground: 200 25% 8%;
-    --sidebar-accent: 200 20% 18%;
+    --sidebar-primary: 220 60% 60%;
+    --sidebar-primary-foreground: 222 50% 8%;
+    --sidebar-accent: 222 30% 18%;
     --sidebar-accent-foreground: 40 20% 95%;
-    --sidebar-border: 200 20% 20%;
-    --sidebar-ring: 168 70% 45%;
+    --sidebar-border: 222 30% 22%;
+    --sidebar-ring: 220 60% 60%;
   }
 }
 

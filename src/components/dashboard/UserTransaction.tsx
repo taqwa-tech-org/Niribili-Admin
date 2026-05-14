@@ -185,7 +185,7 @@ const UserTransaction = () => {
      ========================= */
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)]">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(222,60%,22%)] to-[hsl(220,50%,40%)]">
         <div className="text-white text-xl">Loading transactions...</div>
       </div>
     );
@@ -193,12 +193,12 @@ const UserTransaction = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)]">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(222,60%,22%)] to-[hsl(220,50%,40%)]">
         <div className="bg-white rounded-lg p-8 shadow-lg">
           <p className="text-red-600 text-lg font-semibold">Error: {error}</p>
           <button
             onClick={() => fetchTransactions(currentPage, filterType, searchQuery)}
-            className="mt-4 px-6 py-2 bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] text-white rounded-lg hover:opacity-90 transition"
+            className="mt-4 px-6 py-2 bg-gradient-to-r from-[hsl(222,60%,22%)] to-[hsl(220,50%,40%)] text-white rounded-lg hover:opacity-90 transition"
           >
             Retry
           </button>
@@ -208,7 +208,7 @@ const UserTransaction = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-[hsl(222,60%,22%)] to-[hsl(220,50%,40%)] p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
@@ -229,7 +229,7 @@ const UserTransaction = () => {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={handleSearchKeyDown}
-              className="w-full px-5 py-3 pl-12 border-2 border-gray-300 rounded-lg focus:border-[hsl(168,80%,32%)] focus:outline-none transition-colors text-gray-700"
+              className="w-full px-5 py-3 pl-12 border-2 border-gray-300 rounded-lg focus:border-[hsl(222,60%,22%)] focus:outline-none transition-colors text-gray-700"
             />
             <svg
               className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
@@ -268,7 +268,7 @@ const UserTransaction = () => {
           <div className="mt-3 flex items-center gap-3">
             <button
               onClick={handleSearch}
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] text-white text-sm font-semibold hover:opacity-90 transition"
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-[hsl(222,60%,22%)] to-[hsl(220,50%,40%)] text-white text-sm font-semibold hover:opacity-90 transition"
             >
               Search
             </button>
@@ -294,7 +294,7 @@ const UserTransaction = () => {
                 className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
                   filterType === type
                     ? type === "all"
-                      ? "bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] text-white shadow-lg scale-105"
+                      ? "bg-gradient-to-r from-[hsl(222,60%,22%)] to-[hsl(220,50%,40%)] text-white shadow-lg scale-105"
                       : type === "deposit"
                       ? "bg-gradient-to-r from-green-600 to-green-500 text-white shadow-lg scale-105"
                       : "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg scale-105"
@@ -331,7 +331,7 @@ const UserTransaction = () => {
                   {/* User Info */}
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] flex items-center justify-center text-white font-bold text-lg">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[hsl(222,60%,22%)] to-[hsl(220,50%,40%)] flex items-center justify-center text-white font-bold text-lg">
                         {transaction.userId?.name?.charAt(0)?.toUpperCase() ?? "?"}
                       </div>
                       <div>
@@ -406,7 +406,7 @@ const UserTransaction = () => {
                       </div>
                       <div className="flex justify-between lg:justify-start lg:gap-4">
                         <span className="text-gray-600">Current:</span>
-                        <span className="font-bold text-[hsl(168,80%,32%)]">
+                        <span className="font-bold text-[hsl(222,60%,22%)]">
                           {formatCurrency(transaction.walletId?.balance ?? 0)}
                         </span>
                       </div>
@@ -451,7 +451,7 @@ const UserTransaction = () => {
                   className={`px-4 py-2 rounded-lg font-semibold transition-all ${
                     currentPage === 1
                       ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                      : "bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] text-white hover:opacity-90"
+                      : "bg-gradient-to-r from-[hsl(222,60%,22%)] to-[hsl(220,50%,40%)] text-white hover:opacity-90"
                   }`}
                 >
                   Previous
@@ -467,7 +467,7 @@ const UserTransaction = () => {
                       disabled={page === "..."}
                       className={`min-w-[40px] h-10 rounded-lg font-semibold transition-all ${
                         page === currentPage
-                          ? "bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] text-white shadow-lg"
+                          ? "bg-gradient-to-r from-[hsl(222,60%,22%)] to-[hsl(220,50%,40%)] text-white shadow-lg"
                           : page === "..."
                           ? "bg-transparent text-gray-400 cursor-default"
                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -484,7 +484,7 @@ const UserTransaction = () => {
                   className={`px-4 py-2 rounded-lg font-semibold transition-all ${
                     currentPage === totalPages
                       ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                      : "bg-gradient-to-r from-[hsl(168,80%,32%)] to-[hsl(168,60%,45%)] text-white hover:opacity-90"
+                      : "bg-gradient-to-r from-[hsl(222,60%,22%)] to-[hsl(220,50%,40%)] text-white hover:opacity-90"
                   }`}
                 >
                   Next

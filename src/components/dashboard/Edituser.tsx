@@ -16,6 +16,7 @@ interface Profile {
   userId: UserInfo | null;
   profilePhoto: string | null;
   nidPhoto: string | null;
+  nidBackPhoto: string | null;
   guardianName: string | null;
   guardianPhone: string | null;
   guardianRelation: string | null;
@@ -38,6 +39,7 @@ interface EditForm {
   // Profile photo URLs (null = remove, string = current/new URL, "" = unchanged on initial state)
   profilePhoto: string | null;
   nidPhoto: string | null;
+  nidBackPhoto: string | null;
   guardianName: string;
   guardianPhone: string;
   guardianRelation: string;
@@ -91,7 +93,7 @@ const ACCOUNT_STATUS_OPTIONS = ["pending", "process", "approve", "rejected"];
 
 const blankForm = (): EditForm => ({
   name: "", phone: "",
-  profilePhoto: "", nidPhoto: "",
+  profilePhoto: "", nidPhoto: "", nidBackPhoto: "",
   guardianName: "", guardianPhone: "",
   guardianRelation: "", emergencyContact: "", buildingId: "", flatId: "",
   room: "", accountStatus: "pending", whatsappNumber: "", bio: "",
@@ -107,7 +109,7 @@ const Spinner = ({ size = 16, light = false }: { size?: number; light?: boolean 
     viewBox="0 0 24 24" fill="none"
   >
     <circle cx="12" cy="12" r="10" stroke={light ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.1)"} strokeWidth="3" />
-    <path d="M12 2a10 10 0 0 1 10 10" stroke={light ? "#fff" : "hsl(168,80%,32%)"} strokeWidth="3" strokeLinecap="round" />
+    <path d="M12 2a10 10 0 0 1 10 10" stroke={light ? "#fff" : "hsl(222,60%,22%)"} strokeWidth="3" strokeLinecap="round" />
   </svg>
 );
 
@@ -123,7 +125,7 @@ const Section = ({ label }: { label: string }) => (
   <div className="col-span-2 flex items-center gap-3 mt-2">
     <span
       className="text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full text-white"
-      style={{ background: "linear-gradient(135deg, hsl(168,80%,32%) 0%, hsl(168,60%,45%) 100%)" }}
+      style={{ background: "linear-gradient(135deg, hsl(222,60%,22%) 0%, hsl(220,50%,40%) 100%)" }}
     >{label}</span>
     <div className="flex-1 h-px bg-gray-100" />
   </div>
@@ -145,6 +147,7 @@ const PhotoField = ({
   onSelect,
   onRemove,
   onUndo,
+  fullWidth = false,
 }: {
   label: string;
   currentUrl: string | null;
@@ -154,6 +157,9 @@ const PhotoField = ({
   onSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: () => void;
   onUndo: () => void;
+  // When true, this PhotoField takes the entire row in the parent 2-col grid.
+  // Used for the NID Front/Back so the wide ID card images are clearly visible.
+  fullWidth?: boolean;
 }) => {
   const inputId = `photo-${label.replace(/\s+/g, "-").toLowerCase()}`;
 
@@ -162,13 +168,22 @@ const PhotoField = ({
   const isMarkedForRemoval = currentUrl === null && !previewUrl;
   const hasChanged = hasPendingFile || isMarkedForRemoval || (currentUrl !== originalUrl);
 
+  // Aspect ratio: NID cards (full-width) use a flatter 16:10 ratio so the
+  // landscape ID card fills the box nicely. Profile photos (half-width) keep
+  // the 4:3 ratio that works for portrait images.
+  const aspectClass = fullWidth ? "aspect-[16/10]" : "aspect-[4/3]";
+  const colSpanClass = fullWidth ? "col-span-2" : "col-span-2 sm:col-span-1";
+  // Full-width images use object-contain so the entire NID card is visible
+  // (no cropping). Half-width portraits use object-cover for a tighter fit.
+  const imgFitClass = fullWidth ? "object-contain bg-white" : "object-cover";
+
   return (
-    <div className="col-span-2 sm:col-span-1 flex flex-col gap-1.5">
+    <div className={`${colSpanClass} flex flex-col gap-1.5`}>
       <label className="text-xs font-semibold uppercase tracking-widest text-gray-400">{label}</label>
       <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 flex flex-col gap-3">
-        <div className="w-full aspect-[4/3] rounded-lg border border-gray-200 bg-white overflow-hidden flex items-center justify-center text-xs text-gray-400">
+        <div className={`w-full ${aspectClass} rounded-lg border border-gray-200 bg-white overflow-hidden flex items-center justify-center text-xs text-gray-400`}>
           {displayUrl ? (
-            <img src={displayUrl} alt={label} className="w-full h-full object-cover" />
+            <img src={displayUrl} alt={label} className={`w-full h-full ${imgFitClass}`} />
           ) : (
             <span>{isMarkedForRemoval ? "Will be removed on save" : "No image uploaded"}</span>
           )}
@@ -241,11 +256,13 @@ const Edituser: React.FC = () => {
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Pending file uploads (selected but not yet uploaded — uploaded on Save)
-  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
-  const [nidPhotoFile, setNidPhotoFile]         = useState<File | null>(null);
+  const [profilePhotoFile, setProfilePhotoFile]   = useState<File | null>(null);
+  const [nidPhotoFile, setNidPhotoFile]           = useState<File | null>(null);
+  const [nidBackPhotoFile, setNidBackPhotoFile]   = useState<File | null>(null);
   // Local preview URLs for newly selected files (created with URL.createObjectURL)
-  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
-  const [nidPhotoPreview, setNidPhotoPreview]         = useState<string | null>(null);
+  const [profilePhotoPreview, setProfilePhotoPreview]     = useState<string | null>(null);
+  const [nidPhotoPreview, setNidPhotoPreview]             = useState<string | null>(null);
+  const [nidBackPhotoPreview, setNidBackPhotoPreview]     = useState<string | null>(null);
 
   const [buildings, setBuildings]               = useState<Building[]>([]);
   const [flats, setFlats]                       = useState<Flat[]>([]);
@@ -332,6 +349,7 @@ const Edituser: React.FC = () => {
       phone:            p.userId?.phone    ?? "",
       profilePhoto:     p.profilePhoto     ?? "",
       nidPhoto:         p.nidPhoto         ?? "",
+      nidBackPhoto:     p.nidBackPhoto     ?? "",
       guardianName:     p.guardianName     ?? "",
       guardianPhone:    p.guardianPhone    ?? "",
       guardianRelation: p.guardianRelation ?? "",
@@ -345,24 +363,30 @@ const Edituser: React.FC = () => {
     });
     setProfilePhotoFile(null);
     setNidPhotoFile(null);
+    setNidBackPhotoFile(null);
     setProfilePhotoPreview(null);
     setNidPhotoPreview(null);
+    setNidBackPhotoPreview(null);
     fetchBuildings();
     if (buildingId) fetchFlats(buildingId);
   };
 
   const closeEdit = () => {
     setEditing(null); setSaveMsg(null); setFlats([]);
-    setProfilePhotoFile(null); setNidPhotoFile(null);
+    setProfilePhotoFile(null); setNidPhotoFile(null); setNidBackPhotoFile(null);
     if (profilePhotoPreview) URL.revokeObjectURL(profilePhotoPreview);
     if (nidPhotoPreview) URL.revokeObjectURL(nidPhotoPreview);
-    setProfilePhotoPreview(null); setNidPhotoPreview(null);
+    if (nidBackPhotoPreview) URL.revokeObjectURL(nidBackPhotoPreview);
+    setProfilePhotoPreview(null); setNidPhotoPreview(null); setNidBackPhotoPreview(null);
   };
 
   // ── Photo handlers ──────────────────────────────────────────────────────
+  // 3 photo fields are managed identically: profilePhoto, nidPhoto, nidBackPhoto.
+  type PhotoField = "profilePhoto" | "nidPhoto" | "nidBackPhoto";
+
   const handlePhotoSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
-    field: "profilePhoto" | "nidPhoto",
+    field: PhotoField,
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -375,31 +399,42 @@ const Edituser: React.FC = () => {
       if (profilePhotoPreview) URL.revokeObjectURL(profilePhotoPreview);
       setProfilePhotoFile(file);
       setProfilePhotoPreview(url);
-    } else {
+    } else if (field === "nidPhoto") {
       if (nidPhotoPreview) URL.revokeObjectURL(nidPhotoPreview);
       setNidPhotoFile(file);
       setNidPhotoPreview(url);
+    } else {
+      // nidBackPhoto
+      if (nidBackPhotoPreview) URL.revokeObjectURL(nidBackPhotoPreview);
+      setNidBackPhotoFile(file);
+      setNidBackPhotoPreview(url);
     }
     // Clear the input so the same file can be re-selected later
     e.target.value = "";
   };
 
-  const handlePhotoRemove = (field: "profilePhoto" | "nidPhoto") => {
+  const handlePhotoRemove = (field: PhotoField) => {
     if (field === "profilePhoto") {
       setProfilePhotoFile(null);
       if (profilePhotoPreview) URL.revokeObjectURL(profilePhotoPreview);
       setProfilePhotoPreview(null);
       // null = explicit remove (vs. "" which means "unchanged")
       setForm(f => ({ ...f, profilePhoto: null }));
-    } else {
+    } else if (field === "nidPhoto") {
       setNidPhotoFile(null);
       if (nidPhotoPreview) URL.revokeObjectURL(nidPhotoPreview);
       setNidPhotoPreview(null);
       setForm(f => ({ ...f, nidPhoto: null }));
+    } else {
+      // nidBackPhoto
+      setNidBackPhotoFile(null);
+      if (nidBackPhotoPreview) URL.revokeObjectURL(nidBackPhotoPreview);
+      setNidBackPhotoPreview(null);
+      setForm(f => ({ ...f, nidBackPhoto: null }));
     }
   };
 
-  const handlePhotoUndoChange = (field: "profilePhoto" | "nidPhoto") => {
+  const handlePhotoUndoChange = (field: PhotoField) => {
     // Restore the original DB value and discard the pending file/removal
     if (!editing) return;
     if (field === "profilePhoto") {
@@ -407,11 +442,17 @@ const Edituser: React.FC = () => {
       if (profilePhotoPreview) URL.revokeObjectURL(profilePhotoPreview);
       setProfilePhotoPreview(null);
       setForm(f => ({ ...f, profilePhoto: editing.profilePhoto ?? "" }));
-    } else {
+    } else if (field === "nidPhoto") {
       setNidPhotoFile(null);
       if (nidPhotoPreview) URL.revokeObjectURL(nidPhotoPreview);
       setNidPhotoPreview(null);
       setForm(f => ({ ...f, nidPhoto: editing.nidPhoto ?? "" }));
+    } else {
+      // nidBackPhoto
+      setNidBackPhotoFile(null);
+      if (nidBackPhotoPreview) URL.revokeObjectURL(nidBackPhotoPreview);
+      setNidBackPhotoPreview(null);
+      setForm(f => ({ ...f, nidBackPhoto: editing.nidBackPhoto ?? "" }));
     }
   };
 
@@ -433,6 +474,7 @@ const Edituser: React.FC = () => {
       // 1) Upload any newly-selected photos to Cloudinary first
       let nextProfilePhoto: string | null | undefined = undefined; // undefined = no change
       let nextNidPhoto: string | null | undefined = undefined;
+      let nextNidBackPhoto: string | null | undefined = undefined;
 
       if (profilePhotoFile) {
         nextProfilePhoto = await uploadToCloudinary(profilePhotoFile);
@@ -444,6 +486,12 @@ const Edituser: React.FC = () => {
         nextNidPhoto = await uploadToCloudinary(nidPhotoFile);
       } else if (form.nidPhoto === null) {
         nextNidPhoto = null;
+      }
+
+      if (nidBackPhotoFile) {
+        nextNidBackPhoto = await uploadToCloudinary(nidBackPhotoFile);
+      } else if (form.nidBackPhoto === null) {
+        nextNidBackPhoto = null;
       }
 
       // 2) Build profile-level payload (everything except name/phone)
@@ -458,6 +506,7 @@ const Edituser: React.FC = () => {
       });
       if (nextProfilePhoto !== undefined) profilePayload.profilePhoto = nextProfilePhoto;
       if (nextNidPhoto !== undefined) profilePayload.nidPhoto = nextNidPhoto;
+      if (nextNidBackPhoto !== undefined) profilePayload.nidBackPhoto = nextNidBackPhoto;
 
       // 3) Build user-level payload (name + phone — only if changed)
       const userPayload: Record<string, string> = {};
@@ -505,8 +554,8 @@ const Edituser: React.FC = () => {
         .ap-overlay-anim { animation: overlayIn .2s ease both; }
         .ap-modal-anim { animation: modalIn .25s cubic-bezier(.22,1,.36,1) both; }
         .ap-row:hover td { background: #f0fdfb !important; }
-        .teal-gradient { background: linear-gradient(135deg, hsl(168,80%,32%) 0%, hsl(168,60%,45%) 100%); }
-        .teal-text { background: linear-gradient(135deg, hsl(168,80%,28%) 0%, hsl(168,60%,38%) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .teal-gradient { background: linear-gradient(135deg, hsl(222,60%,22%) 0%, hsl(220,50%,40%) 100%); }
+        .teal-text { background: linear-gradient(135deg, hsl(222,65%,18%) 0%, hsl(220,50%,35%) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #f8fafc; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
       `}</style>
 
@@ -621,7 +670,7 @@ const Edituser: React.FC = () => {
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-sm font-bold text-white"
-                          style={{ background: "linear-gradient(135deg, hsl(168,80%,32%) 0%, hsl(168,60%,45%) 100%)" }}>
+                          style={{ background: "linear-gradient(135deg, hsl(222,60%,22%) 0%, hsl(220,50%,40%) 100%)" }}>
                           {p.profilePhoto
                             ? <img src={p.profilePhoto} alt={u?.name} className="w-full h-full object-cover"
                                 onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
@@ -747,7 +796,7 @@ const Edituser: React.FC = () => {
                   onUndo={() => handlePhotoUndoChange("profilePhoto")}
                 />
                 <PhotoField
-                  label="NID Photo"
+                  label="NID Front Photo"
                   currentUrl={form.nidPhoto}
                   previewUrl={nidPhotoPreview}
                   hasPendingFile={!!nidPhotoFile}
@@ -755,6 +804,18 @@ const Edituser: React.FC = () => {
                   onSelect={e => handlePhotoSelect(e, "nidPhoto")}
                   onRemove={() => handlePhotoRemove("nidPhoto")}
                   onUndo={() => handlePhotoUndoChange("nidPhoto")}
+                  fullWidth
+                />
+                <PhotoField
+                  label="NID Back Photo"
+                  currentUrl={form.nidBackPhoto}
+                  previewUrl={nidBackPhotoPreview}
+                  hasPendingFile={!!nidBackPhotoFile}
+                  originalUrl={editing.nidBackPhoto}
+                  onSelect={e => handlePhotoSelect(e, "nidBackPhoto")}
+                  onRemove={() => handlePhotoRemove("nidBackPhoto")}
+                  onUndo={() => handlePhotoUndoChange("nidBackPhoto")}
+                  fullWidth
                 />
 
                 <Section label="Personal Info" />
@@ -844,7 +905,7 @@ const Edituser: React.FC = () => {
                 onClick={handleSave}
                 disabled={saving}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition disabled:opacity-60"
-                style={{ background: "linear-gradient(135deg, hsl(168,80%,32%) 0%, hsl(168,60%,45%) 100%)" }}
+                style={{ background: "linear-gradient(135deg, hsl(222,60%,22%) 0%, hsl(220,50%,40%) 100%)" }}
               >
                 {saving ? <><Spinner size={14} light /> Saving…</> : "Save Changes"}
               </button>
