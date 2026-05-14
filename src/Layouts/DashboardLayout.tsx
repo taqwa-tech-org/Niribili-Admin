@@ -81,7 +81,7 @@ const DashboardLayout = ({ role = "admin" }: { role?: Role }) => {
               className="w-5 h-5 brightness-0 invert" 
             />
           </div>
-          <span className="font-display text-lg font-bold text-gradient">নিরিবিলি হোম</span>
+          <span className="font-display text-lg font-bold text-gradient">নিরিবিলি ব্যাচেলর হোম</span>
         </div>
 
         {/* Navigation */}
@@ -216,7 +216,7 @@ const DashboardLayout = ({ role = "admin" }: { role?: Role }) => {
               className="fixed inset-y-0 left-0 w-72 bg-card border-r border-border z-50 lg:hidden flex flex-col shadow-2xl"
             >
               <div className="h-16 flex items-center justify-between px-6 border-b border-border">
-                <span className="font-display text-lg font-bold">নিরিবিলি হোম</span>
+                <span className="font-display text-lg font-bold">নিরিবিলি ব্যাচেলর হোম</span>
                 <button onClick={() => setSidebarOpen(false)} className="p-2 text-muted-foreground"><X /></button>
               </div>
               <nav className="p-4 space-y-2">
