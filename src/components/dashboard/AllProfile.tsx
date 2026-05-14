@@ -16,6 +16,7 @@ interface ProfileItem {
   };
   profilePhoto?: string | null;
   nidPhoto?: string | null;
+  nidBackPhoto?: string | null;
   guardianName?: string | null;
   guardianPhone?: string | null;
   guardianRelation?: string | null;
@@ -142,6 +143,7 @@ const AllProfile: React.FC = () => {
               isDeleted: u.isDeleted,
               profilePhoto: profile.profilePhoto,
               nidPhoto: profile.nidPhoto,
+              nidBackPhoto: profile.nidBackPhoto,
               guardianName: profile.guardianName,
               guardianPhone: profile.guardianPhone,
               guardianRelation: profile.guardianRelation,
@@ -559,10 +561,11 @@ const AllProfile: React.FC = () => {
               </div>
             </div>
 
-            {/* Photos */}
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <ImageBlock label="Profile Photo" src={selectedProfile.profilePhoto} />
-              <ImageBlock label="NID Photo"     src={selectedProfile.nidPhoto} />
+            {/* Photos — Profile + NID Front + NID Back */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+              <ImageBlock label="Profile Photo"   src={selectedProfile.profilePhoto} />
+              <ImageBlock label="NID Front Photo" src={selectedProfile.nidPhoto} />
+              <ImageBlock label="NID Back Photo"  src={selectedProfile.nidBackPhoto} />
             </div>
 
             <Section title="Personal Information">
