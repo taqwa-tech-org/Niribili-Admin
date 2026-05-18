@@ -20,6 +20,8 @@ import {
   UserCog,
   IdCard,
   Wallet,
+  Hotel,
+  MessageSquare,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -46,6 +48,8 @@ const menuConfig: Record<Role, MenuItem[]> = {
     { icon: Wallet, label: "ব্যালান্স আপডেট", href: "/admin-dashboard/userbalance" },
     { icon: ShoppingBasket, label: "বাজার হিসাব", href: "/admin-dashboard/bazar-hisab" },
     { icon: Settings2, label: "মিল সেটিংস", href: "/admin-dashboard/meal-settings" },
+    { icon: Hotel, label: "পোর্টফোলিও হোস্টেল", href: "/admin-dashboard/hostels" },
+    { icon: MessageSquare, label: "ইনকোয়েরি (লিডস)", href: "/admin-dashboard/inquiries" },
   ],
   
   user: [
