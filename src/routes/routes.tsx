@@ -15,6 +15,9 @@ import UserManagement from "@/pages/UserManagement";
 import { createBrowserRouter } from "react-router-dom";
 import BuildingManagement from "@/pages/BuildingManagement";
 import AllUserWalletBalance from "@/components/dashboard/AllUserWalletBalance";
+import Hostels from "@/pages/Hostels";
+import HostelEditor from "@/pages/HostelEditor";
+import Inquiries from "@/pages/Inquiries";
 
 
 const appRoutes = createBrowserRouter([
@@ -44,6 +47,10 @@ const appRoutes = createBrowserRouter([
       { path: "locked-meals", element: <LockedMeals /> },
       { path: "meal-settings", element: <MealSettings /> },
       { path: "bazar-hisab", element: <BazarHisab /> },
+      { path: "hostels", element: <Hostels /> },
+      { path: "hostels/new", element: <HostelEditor /> },
+      { path: "hostels/:id/edit", element: <HostelEditor /> },
+      { path: "inquiries", element: <Inquiries /> },
     ],
   },
 
