@@ -18,6 +18,7 @@ import AllUserWalletBalance from "@/components/dashboard/AllUserWalletBalance";
 import Hostels from "@/pages/Hostels";
 import HostelEditor from "@/pages/HostelEditor";
 import Inquiries from "@/pages/Inquiries";
+import Bookings from "@/pages/Bookings";
 
 
 const appRoutes = createBrowserRouter([
@@ -51,6 +52,7 @@ const appRoutes = createBrowserRouter([
       { path: "hostels/new", element: <HostelEditor /> },
       { path: "hostels/:id/edit", element: <HostelEditor /> },
       { path: "inquiries", element: <Inquiries /> },
+      { path: "bookings", element: <Bookings /> },
     ],
   },
 

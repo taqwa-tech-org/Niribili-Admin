@@ -22,6 +22,7 @@ import {
   Wallet,
   Hotel,
   MessageSquare,
+  ClipboardList,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ const menuConfig: Record<Role, MenuItem[]> = {
     { icon: Settings2, label: "মিল সেটিংস", href: "/admin-dashboard/meal-settings" },
     { icon: Hotel, label: "পোর্টফোলিও হোস্টেল", href: "/admin-dashboard/hostels" },
     { icon: MessageSquare, label: "ইনকোয়েরি (লিডস)", href: "/admin-dashboard/inquiries" },
+    { icon: ClipboardList, label: "বুকিং রিকোয়েস্ট", href: "/admin-dashboard/bookings" },
   ],
   
   user: [
