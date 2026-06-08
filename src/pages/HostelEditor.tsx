@@ -14,6 +14,7 @@ interface RoomType {
   typeEn: string;
   price: number;
   capacity: number;
+  youtubeUrl: string;
 }
 
 interface HostelForm {
@@ -24,6 +25,8 @@ interface HostelForm {
   addressEn: string;
   area: string;
   coordinates: { lat: number; lng: number };
+  googleMapUrl: string;
+  youtubeUrl: string;
   descriptionBn: string;
   descriptionEn: string;
   photos: UploadedPhoto[];
@@ -49,6 +52,8 @@ const emptyForm = (): HostelForm => ({
   addressEn: "",
   area: "Mirpur",
   coordinates: { lat: 23.8103, lng: 90.4125 },
+  googleMapUrl: "",
+  youtubeUrl: "",
   descriptionBn: "",
   descriptionEn: "",
   photos: [],
@@ -157,7 +162,7 @@ const HostelEditor = () => {
   const addRoomType = () =>
     update("roomTypes", [
       ...form.roomTypes,
-      { typeBn: "", typeEn: "", price: 0, capacity: 1 },
+      { typeBn: "", typeEn: "", price: 0, capacity: 1, youtubeUrl: "" },
     ]);
 
   const removeRoomType = (idx: number) =>
@@ -374,7 +379,24 @@ const HostelEditor = () => {
           lat={form.coordinates.lat}
           lng={form.coordinates.lng}
           onChange={(coords) => update("coordinates", coords)}
+          googleMapUrl={form.googleMapUrl}
+          onGoogleMapUrlChange={(url) => update("googleMapUrl", url)}
         />
+      </Section>
+
+      {/* Video */}
+      <Section title="ভিডিও / Video">
+        <Field label="Hostel YouTube ভিডিও লিংক (ঐচ্ছিক)">
+          <input
+            value={form.youtubeUrl}
+            onChange={(e) => update("youtubeUrl", e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=...  বা  https://youtu.be/..."
+            className={inputCls}
+          />
+        </Field>
+        <p className="text-[10px] text-muted-foreground font-bold">
+          এই ভিডিওটি হোস্টেল ডিটেইল পেজ ও বুকিং মডালে দেখানো হবে।
+        </p>
       </Section>
 
       {/* Rent & Rooms */}
@@ -428,44 +450,52 @@ const HostelEditor = () => {
             form.roomTypes.map((rt, i) => (
               <div
                 key={i}
-                className="grid grid-cols-1 md:grid-cols-5 gap-2 items-end p-3 rounded-xl bg-secondary/30 border border-border/40"
+                className="space-y-2 p-3 rounded-xl bg-secondary/30 border border-border/40"
               >
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-2 items-end">
+                  <input
+                    value={rt.typeBn}
+                    onChange={(e) => updateRoomType(i, "typeBn", e.target.value)}
+                    placeholder="সিঙ্গেল"
+                    className={inputCls + " md:col-span-1"}
+                  />
+                  <input
+                    value={rt.typeEn}
+                    onChange={(e) => updateRoomType(i, "typeEn", e.target.value)}
+                    placeholder="Single"
+                    className={inputCls + " md:col-span-1"}
+                  />
+                  <input
+                    type="number"
+                    value={rt.price}
+                    onChange={(e) => updateRoomType(i, "price", Number(e.target.value))}
+                    placeholder="Price"
+                    className={inputCls + " md:col-span-1"}
+                  />
+                  <input
+                    type="number"
+                    value={rt.capacity}
+                    onChange={(e) =>
+                      updateRoomType(i, "capacity", Number(e.target.value))
+                    }
+                    placeholder="Capacity"
+                    className={inputCls + " md:col-span-1"}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => removeRoomType(i)}
+                    className="h-12 rounded-xl text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
                 <input
-                  value={rt.typeBn}
-                  onChange={(e) => updateRoomType(i, "typeBn", e.target.value)}
-                  placeholder="সিঙ্গেল"
-                  className={inputCls + " md:col-span-1"}
+                  value={rt.youtubeUrl ?? ""}
+                  onChange={(e) => updateRoomType(i, "youtubeUrl", e.target.value)}
+                  placeholder="রুমের YouTube ভিডিও লিংক (ঐচ্ছিক) — https://youtu.be/..."
+                  className={inputCls}
                 />
-                <input
-                  value={rt.typeEn}
-                  onChange={(e) => updateRoomType(i, "typeEn", e.target.value)}
-                  placeholder="Single"
-                  className={inputCls + " md:col-span-1"}
-                />
-                <input
-                  type="number"
-                  value={rt.price}
-                  onChange={(e) => updateRoomType(i, "price", Number(e.target.value))}
-                  placeholder="Price"
-                  className={inputCls + " md:col-span-1"}
-                />
-                <input
-                  type="number"
-                  value={rt.capacity}
-                  onChange={(e) =>
-                    updateRoomType(i, "capacity", Number(e.target.value))
-                  }
-                  placeholder="Capacity"
-                  className={inputCls + " md:col-span-1"}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => removeRoomType(i)}
-                  className="h-12 rounded-xl text-destructive hover:bg-destructive/10"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
               </div>
             ))
           )}
