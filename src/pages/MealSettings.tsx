@@ -21,12 +21,12 @@ interface MealSetting {
   breakfastPrice: number;
   lunchPrice: number;
   dinnerPrice: number;
-  cutoffHour: number;
-  cutoffMinute: number;
+  autoLockHour: number;
+  autoLockMinute: number;
   updatedAt?: string;
 }
 
-const formatCutoff12h = (hour: number, minute: number): string => {
+const formatTime12h = (hour: number, minute: number): string => {
   const safeHour = Math.max(0, Math.min(23, hour));
   const safeMinute = Math.max(0, Math.min(59, minute));
   const period = safeHour >= 12 ? "PM" : "AM";
@@ -59,8 +59,8 @@ const MealSettingsPage = () => {
   const [breakfastPrice, setBreakfastPrice] = useState<number>(40);
   const [lunchPrice, setLunchPrice] = useState<number>(80);
   const [dinnerPrice, setDinnerPrice] = useState<number>(80);
-  const [cutoffHour, setCutoffHour] = useState<number>(21);
-  const [cutoffMinute, setCutoffMinute] = useState<number>(0);
+  const [autoLockHour, setAutoLockHour] = useState<number>(4);
+  const [autoLockMinute, setAutoLockMinute] = useState<number>(0);
 
   const fetchSettings = async () => {
     try {
@@ -72,8 +72,8 @@ const MealSettingsPage = () => {
         setBreakfastPrice(data.breakfastPrice);
         setLunchPrice(data.lunchPrice);
         setDinnerPrice(data.dinnerPrice);
-        setCutoffHour(data.cutoffHour);
-        setCutoffMinute(data.cutoffMinute);
+        setAutoLockHour(data.autoLockHour);
+        setAutoLockMinute(data.autoLockMinute);
       }
     } catch (err: any) {
       Swal.fire(
@@ -97,18 +97,18 @@ const MealSettingsPage = () => {
       original.breakfastPrice !== breakfastPrice ||
       original.lunchPrice !== lunchPrice ||
       original.dinnerPrice !== dinnerPrice ||
-      original.cutoffHour !== cutoffHour ||
-      original.cutoffMinute !== cutoffMinute
+      original.autoLockHour !== autoLockHour ||
+      original.autoLockMinute !== autoLockMinute
     );
-  }, [original, breakfastPrice, lunchPrice, dinnerPrice, cutoffHour, cutoffMinute]);
+  }, [original, breakfastPrice, lunchPrice, dinnerPrice, autoLockHour, autoLockMinute]);
 
   const handleReset = () => {
     if (!original) return;
     setBreakfastPrice(original.breakfastPrice);
     setLunchPrice(original.lunchPrice);
     setDinnerPrice(original.dinnerPrice);
-    setCutoffHour(original.cutoffHour);
-    setCutoffMinute(original.cutoffMinute);
+    setAutoLockHour(original.autoLockHour);
+    setAutoLockMinute(original.autoLockMinute);
   };
 
   const validate = (): string | null => {
@@ -120,18 +120,18 @@ const MealSettingsPage = () => {
       return "মিল রেট ০ বা তার বেশি একটি সংখ্যা হতে হবে";
     }
     if (
-      Number.isNaN(cutoffHour) ||
-      cutoffHour < 0 ||
-      cutoffHour > 23 ||
-      !Number.isInteger(cutoffHour)
+      Number.isNaN(autoLockHour) ||
+      autoLockHour < 0 ||
+      autoLockHour > 23 ||
+      !Number.isInteger(autoLockHour)
     ) {
       return "ঘন্টা ০ থেকে ২৩ এর মধ্যে হতে হবে";
     }
     if (
-      Number.isNaN(cutoffMinute) ||
-      cutoffMinute < 0 ||
-      cutoffMinute > 59 ||
-      !Number.isInteger(cutoffMinute)
+      Number.isNaN(autoLockMinute) ||
+      autoLockMinute < 0 ||
+      autoLockMinute > 59 ||
+      !Number.isInteger(autoLockMinute)
     ) {
       return "মিনিট ০ থেকে ৫৯ এর মধ্যে হতে হবে";
     }
@@ -152,7 +152,7 @@ const MealSettingsPage = () => {
           <div><b>সকাল:</b> ৳${breakfastPrice}</div>
           <div><b>দুপুর:</b> ৳${lunchPrice}</div>
           <div><b>রাত:</b> ৳${dinnerPrice}</div>
-          <div><b>কাটঅফ টাইম:</b> ${formatCutoff12h(cutoffHour, cutoffMinute)} (আগের দিন)</div>
+          <div><b>অটো-লক টাইম:</b> ${formatTime12h(autoLockHour, autoLockMinute)} (মিলের দিন)</div>
         </div>
       `,
       icon: "question",
@@ -169,8 +169,8 @@ const MealSettingsPage = () => {
         breakfastPrice,
         lunchPrice,
         dinnerPrice,
-        cutoffHour,
-        cutoffMinute,
+        autoLockHour,
+        autoLockMinute,
       });
       const data: MealSetting = res.data?.data;
       if (data) {
@@ -178,8 +178,8 @@ const MealSettingsPage = () => {
         setBreakfastPrice(data.breakfastPrice);
         setLunchPrice(data.lunchPrice);
         setDinnerPrice(data.dinnerPrice);
-        setCutoffHour(data.cutoffHour);
-        setCutoffMinute(data.cutoffMinute);
+        setAutoLockHour(data.autoLockHour);
+        setAutoLockMinute(data.autoLockMinute);
       }
 
       Swal.fire({
@@ -208,7 +208,7 @@ const MealSettingsPage = () => {
     );
   }
 
-  const cutoffDisplay = formatCutoff12h(cutoffHour, cutoffMinute);
+  const lockDisplay = formatTime12h(autoLockHour, autoLockMinute);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto px-2 md:px-4 py-4">
@@ -229,7 +229,7 @@ const MealSettingsPage = () => {
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            মিলের রেট এবং অর্ডার কাটঅফ টাইম এখান থেকে পরিবর্তন করুন।
+            মিলের রেট এবং অটো-লক টাইম এখান থেকে পরিবর্তন করুন।
           </p>
         </div>
 
@@ -251,13 +251,12 @@ const MealSettingsPage = () => {
         <div className="text-sm text-muted-foreground leading-relaxed">
           <p className="text-foreground font-semibold mb-1">কীভাবে কাজ করে?</p>
           <p>
-            আগামীকালের মিল অর্ডার করতে হলে ব্যবহারকারীকে{" "}
-            <span className="text-primary font-bold">
-              আজকের রাত {cutoffDisplay}
-            </span>{" "}
-            এর আগে অর্ডার করতে হবে। এই সময় পেরিয়ে গেলে অর্ডার লক হয়ে যাবে এবং
-            পরিবর্তন করা যাবে না। আপনি যেকোনো সময় এই কাটঅফ টাইম পরিবর্তন করতে
-            পারবেন।
+            যেকোনো দিনের মিল সেই দিন{" "}
+            <span className="text-primary font-bold">{lockDisplay}</span>{" "}
+            টায় স্বয়ংক্রিয়ভাবে লক হয়ে যাবে (Bangladesh Time)। এর আগে পর্যন্ত
+            ব্যবহারকারী ঐ দিনের মিল অর্ডার বা পরিবর্তন করতে পারবে। লক হওয়ার পর
+            ওয়ালেট থেকে টাকা কেটে নেওয়া হবে এবং আর পরিবর্তন করা যাবে না। আপনি
+            যেকোনো সময় এই অটো-লক টাইম পরিবর্তন করতে পারবেন।
           </p>
         </div>
       </motion.div>
@@ -377,7 +376,7 @@ const MealSettingsPage = () => {
         </div>
       </motion.div>
 
-      {/* Cutoff Time Card */}
+      {/* Auto-lock Time Card */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -389,9 +388,9 @@ const MealSettingsPage = () => {
             <Clock className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-bold">কাটঅফ টাইম</h2>
+            <h2 className="text-lg font-bold">অটো-লক টাইম</h2>
             <p className="text-xs text-muted-foreground">
-              আগামীকালের মিল অর্ডারের জন্য আজকের শেষ সময় (Bangladesh Time)
+              মিলের দিন এই সময়ে মিল অটো-লক হবে (Bangladesh Time)
             </p>
           </div>
         </div>
@@ -407,11 +406,11 @@ const MealSettingsPage = () => {
               min={0}
               max={23}
               step={1}
-              value={Number.isNaN(cutoffHour) ? "" : cutoffHour}
-              onChange={(e) => setCutoffHour(Number(e.target.value))}
+              value={Number.isNaN(autoLockHour) ? "" : autoLockHour}
+              onChange={(e) => setAutoLockHour(Number(e.target.value))}
             />
             <p className="text-[11px] text-muted-foreground mt-1">
-              উদাহরণ: রাত ৯টা = ২১, রাত ১০টা = ২২
+              উদাহরণ: ভোর ৪টা = ৪, সকাল ৫টা = ৫
             </p>
           </div>
 
@@ -425,8 +424,8 @@ const MealSettingsPage = () => {
               min={0}
               max={59}
               step={1}
-              value={Number.isNaN(cutoffMinute) ? "" : cutoffMinute}
-              onChange={(e) => setCutoffMinute(Number(e.target.value))}
+              value={Number.isNaN(autoLockMinute) ? "" : autoLockMinute}
+              onChange={(e) => setAutoLockMinute(Number(e.target.value))}
             />
             <p className="text-[11px] text-muted-foreground mt-1">
               মিনিট ০ থেকে ৫৯
@@ -436,13 +435,13 @@ const MealSettingsPage = () => {
           {/* Live preview */}
           <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
             <p className="text-[11px] text-muted-foreground mb-1 font-bold uppercase tracking-wider">
-              বর্তমান কাটঅফ
+              বর্তমান অটো-লক
             </p>
             <p className="text-2xl font-display font-bold text-primary">
-              {cutoffDisplay}
+              {lockDisplay}
             </p>
             <p className="text-[11px] text-muted-foreground mt-1">
-              আগের দিন রাতের এই সময়ের মধ্যে অর্ডার দিতে হবে
+              মিলের দিন এই সময়ে মিল অটো-লক হবে; এর আগে পর্যন্ত অর্ডার করা যাবে
             </p>
           </div>
         </div>
@@ -454,20 +453,20 @@ const MealSettingsPage = () => {
           </p>
           <div className="flex flex-wrap gap-2">
             {[
-              { label: "রাত ৮:০০", h: 20, m: 0 },
-              { label: "রাত ৯:০০", h: 21, m: 0 },
-              { label: "রাত ৯:৩০", h: 21, m: 30 },
-              { label: "রাত ১০:০০", h: 22, m: 0 },
-              { label: "রাত ১১:০০", h: 23, m: 0 },
+              { label: "ভোর ৩:০০", h: 3, m: 0 },
+              { label: "ভোর ৩:৩০", h: 3, m: 30 },
+              { label: "ভোর ৪:০০", h: 4, m: 0 },
+              { label: "ভোর ৪:৩০", h: 4, m: 30 },
+              { label: "ভোর ৫:০০", h: 5, m: 0 },
             ].map((p) => {
-              const active = cutoffHour === p.h && cutoffMinute === p.m;
+              const active = autoLockHour === p.h && autoLockMinute === p.m;
               return (
                 <button
                   key={p.label}
                   type="button"
                   onClick={() => {
-                    setCutoffHour(p.h);
-                    setCutoffMinute(p.m);
+                    setAutoLockHour(p.h);
+                    setAutoLockMinute(p.m);
                   }}
                   className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
                     active
