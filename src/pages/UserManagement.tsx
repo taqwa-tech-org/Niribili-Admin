@@ -51,12 +51,18 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
+  const [serverStats, setServerStats] = useState({ total: 0, pending: 0, process: 0, approve: 0 });
+
   const fetchData = useCallback(async () => {
     try {
-      const [uRes, bRes, fRes] = await Promise.all([
-        axiosSecure.get("/profile?page=1&limit=100"),
+      const [uRes, bRes, fRes, totalRes, pendingRes, processRes, approveRes] = await Promise.all([
+        axiosSecure.get("/profile?page=1&limit=100000&isDeleted=false"),
         axiosSecure.get("/buildings"),
         axiosSecure.get("/flats"),
+        axiosSecure.get("/profile?page=1&limit=1&isDeleted=false"),
+        axiosSecure.get("/profile?page=1&limit=1&isDeleted=false&accountStatus=pending"),
+        axiosSecure.get("/profile?page=1&limit=1&isDeleted=false&accountStatus=process"),
+        axiosSecure.get("/profile?page=1&limit=1&isDeleted=false&accountStatus=approve"),
       ]);
 
       const allUsers: UserProfile[] = uRes.data?.data?.profiles ?? uRes.data?.data?.results ?? [];
@@ -70,6 +76,13 @@ const UserManagement = () => {
       setUsers(activeUsers);
       setBuildings(Array.isArray(bRes.data?.data) ? bRes.data.data : []);
       setFlats(Array.isArray(fRes.data?.data) ? fRes.data.data : []);
+
+      setServerStats({
+        total:   Number(totalRes.data?.data?.meta?.total)   || 0,
+        pending: Number(pendingRes.data?.data?.meta?.total) || 0,
+        process: Number(processRes.data?.data?.meta?.total) || 0,
+        approve: Number(approveRes.data?.data?.meta?.total) || 0,
+      });
     } catch (err) {
       console.error("Fetch Error:", err);
       Swal.fire("Error", "Data load failed", "error");
@@ -85,13 +98,8 @@ const UserManagement = () => {
     setCurrentPage(1);
   }, [filterBuilding, filterStatus, searchTerm]);
 
-  // --- Stats ---
-  const stats = {
-    total:   users.length,
-    pending: users.filter(u => u.accountStatus === "pending" || !u.accountStatus).length,
-    process: users.filter(u => u.accountStatus === "process").length,
-    approve: users.filter(u => u.accountStatus === "approve").length,
-  };
+  // --- Stats (from server-side counts so they don't get truncated by the list limit) ---
+  const stats = serverStats;
 
   const handleDeleteUser = async (id: string) => {
     const result = await Swal.fire({
@@ -108,6 +116,7 @@ const UserManagement = () => {
       try {
         await axiosSecure.delete(`/user/delete/${id}`);
         setUsers((prev) => prev.filter((user) => user._id !== id));
+        fetchData();
         Swal.fire({ title: "সফল!", text: "ব্যবহারকারীকে সরানো হয়েছে।", icon: "success", timer: 1000, showConfirmButton: false });
       } catch (err) {
         Swal.fire("ভুল হয়েছে", "মুছে ফেলা সম্ভব হয়নি।", "error");
@@ -125,6 +134,7 @@ const UserManagement = () => {
     try {
       await axiosSecure.patch(`/profile/${selectedUser._id}/status`, { accountStatus: status });
       setUsers(prev => prev.map(u => u._id === selectedUser._id ? { ...u, accountStatus: status } : u));
+      fetchData();
       Swal.fire({ icon: "success", title: "আপডেট সফল", timer: 1000, showConfirmButton: false });
       setStatusModal(false);
     } catch (err) {
