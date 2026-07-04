@@ -36,7 +36,7 @@ const BuildingManagement = () => {
     const [bRes, fRes, pRes] = await Promise.all([
       axiosSecure.get("/buildings"),
       axiosSecure.get("/flats"),
-      axiosSecure.get("/profile?page=1&limit=100"),
+      axiosSecure.get("/profile?page=1&limit=100000&isDeleted=false"),
     ]);
 
     // Buildings - API returns { data: [...] }
